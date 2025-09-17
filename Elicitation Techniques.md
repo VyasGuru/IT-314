@@ -184,4 +184,4 @@
 
 - **Use Cases & Scenarios:**  
   Define workflows such as “User saves listing → Database stores → User retrieves later.”  
-  **Justification:** Clarifies expected system behavior, avoids miscommunication, and establishes testable requirements.
+  **Justification:** Clarifies expected system behavior, avoids miscommunication, and establishes testable requirements. 
