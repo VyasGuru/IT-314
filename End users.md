@@ -23,6 +23,7 @@ This role splits into two sub-categories:
 - Manages requests from buyers/renters.
 - Can view feedback/reviews about their properties.
 
+
 ## Admin
 - Logs in as super-user.
 - Verifies listers and their documents.
