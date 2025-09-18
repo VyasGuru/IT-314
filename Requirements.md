@@ -1,20 +1,19 @@
-Requirements for Real Estate Listing Website (With Priorities)
-The system enables visitors, registered users, and admins to interact with real estate listings.
-
-1. User Types :-
-Visitor (Unregistered User)
 
 
-Registered User
+# Requirements for Real Estate Listing Website (With Priorities)
 
+The system enables **visitors**, **registered users**, and **admins** to interact with real estate listings.
 
-Buyer / Renter
+---
 
+## 1. User Types
 
-Lister / Seller / Owner / Real Estate Agent
+- **Visitor (Unregistered User)**
+- **Registered User**
+- **Buyer / Renter**
+- **Lister / Seller / Owner / Real Estate Agent**
+- **Admin**
 
-
-Admin
 
 
 
