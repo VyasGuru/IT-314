@@ -103,3 +103,33 @@ The system shall allow admins to send notifications or announcements to all user
 
 Could Have
 The system shall allow admins to manage advertisements and promotions.
+
+3. Non-Functional Requirements
+
+Performance
+Must Have → The system shall respond to user requests within 2 seconds under normal load.
+
+
+Scalability
+Must Have → The system shall support at least 10,000 concurrent users.
+
+
+Security
+Must Have → The system shall store all passwords in encrypted form.
+
+
+Usability
+Must Have → The system shall provide an intuitive and user-friendly interface for both technical and non-technical users.
+
+
+Reliability
+Must Have → The system shall maintain at least 99.5% uptime per year.
+
+
+Compatibility
+Should Have → The system shall be accessible from both desktop and mobile browsers.
+
+
+Maintainability
+Should Have → The system shall allow easy updates to property categories and features without downtime.
+
