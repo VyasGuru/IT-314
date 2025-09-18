@@ -17,173 +17,104 @@ The system enables **visitors**, **registered users**, and **admins** to interac
 
 
 
-2. Functional Requirements :-
+# Functional Requirements for Real Estate Listing Website
 
+The system enables **visitors**, **registered users**, and **admins** to interact with real estate listings.
 
-2.1 Visitor (Unregistered User)
+---
 
-Must Have :
-The system shall allow visitors to browse the website without logging in.
+## 2.1 Visitor (Unregistered User)
 
+### ✅ Must Have
+- The system shall allow visitors to **browse the website without logging in**.
 
-Should Have :
-The system shall restrict advanced features (such as saving properties, comparing prices, and viewing past prices) for unregistered users.
+### ⚠️ Should Have
+- The system shall restrict advanced features (such as **saving properties**, **comparing prices**, and **viewing past prices**) for unregistered users.
 
+---
 
+## 2.2 Registered User (Buyer / Renter)
 
-2.2 Registered User (Buyer / Renter)
+### ✅ Must Have
+- The system shall allow buyers/renters to **log in securely**.  
+- The system shall require buyers/renters to **upload valid identity proof**.  
+- The system shall allow buyers/renters to **request property visits** from listers.  
+- The system shall allow buyers/renters to **save property details** for future reference.  
 
-Must Have :
-The system shall allow buyers/renters to log in securely.
+### ⚠️ Should Have
+- The system shall allow buyers/renters to **view the previous price history** of a property.  
+- The system shall allow buyers/renters to **compare prices** of different properties.  
+- The system shall allow buyers/renters to **read and write reviews** about properties.  
 
+### 💡 Could Have
+- The system shall provide a **360° property view** feature.  
+- The system shall allow buyers/renters to **set alerts/notifications** for new properties matching their criteria.  
 
-The system shall require buyers/renters to upload valid identity proof.
+---
 
+## 2.3 Registered User (Lister / Seller / Owner / Real Estate Agent)
 
-The system shall allow buyers/renters to request property visits from listers.
+### ✅ Must Have
+- The system shall allow listers to **log in securely**.  
+- The system shall require listers to **upload valid identity proof**.  
+- The system shall allow listers to **add, update, and delete property listings**.  
 
+### ⚠️ Should Have
+- The system shall allow listers to **view feedback and reviews** related to their properties.  
+- The system shall allow listers to **view requests** from buyers/renters.  
 
-The system shall allow buyers/renters to save property details for future reference.
+---
 
+## 2.4 Admin
 
-Should Have :
-The system shall allow buyers/renters to view the previous price history of a property.
+### ✅ Must Have
+- The system shall allow admins to **log in securely**.  
+- The system shall allow admins to **verify listers and their documents**.  
+- The system shall allow admins to **manage user accounts** (suspend/ban users).  
+- The system shall allow admins to **detect fraudulent properties**.  
 
+### ⚠️ Should Have
+- The system shall allow admins to **view analytics** of listings and site usage.  
+- The system shall allow admins to **send notifications or announcements** to all users.  
 
-The system shall allow buyers/renters to compare prices of different properties.
+### 💡 Could Have
+- The system shall allow admins to **manage advertisements and promotions**.  
 
+---
 
-The system shall allow buyers/renters to read and write reviews about properties.
+# Functional Requirements (Justifications)
 
+## 2.1 Visitor (Unregistered User)
+- **Browse without logging in**: Increases potential users by reducing the barrier to entry.  
+- **Restrict advanced features**: Implements access control and motivates registration.  
 
-Could Have :
-The system shall provide a 360° property view feature.
+## 2.2 Registered User (Buyer / Renter)
+- **Secure login**: Protects accounts and personal data.  
+- **Upload identity proof**: Builds trust and ensures authenticity.  
+- **Request property visits**: Enables meaningful buyer–seller interaction.  
+- **Save property details**: Improves usability by letting users revisit listings.  
+- **View price history**: Increases transparency for better decisions.  
+- **Compare property prices**: Provides decision-support tools.  
+- **Read/write reviews**: Adds credibility and social proof.  
+- **360° view**: Enhances user experience with immersive visualization.  
+- **Set alerts/notifications**: Keeps users engaged with updates.  
 
+## 2.3 Registered User (Lister / Seller / Owner / Real Estate Agent)
+- **Secure login**: Protects listings and credentials.  
+- **Upload identity proof**: Ensures verification and reduces fraud.  
+- **Add/update/delete listings**: Provides essential CRUD operations.  
+- **View feedback/reviews**: Supports improvement and reputation management.  
+- **View requests**: Facilitates smooth communication with buyers/renters.  
 
-The system shall allow buyers/renters to set alerts/notifications for new properties matching their criteria.
+## 2.4 Admin
+- **Secure login**: Protects powerful privileges.  
+- **Verify listers/documents**: Ensures trustworthiness.  
+- **Manage user accounts**: Maintains platform integrity.  
+- **Detect fraudulent properties**: Protects credibility of listings.  
+- **View analytics**: Provides insights for improvement.  
+- **Send notifications**: Enables mass communication.  
+- **Manage ads/promotions**: Adds revenue generation.  
 
-
-
-2.3 Registered User (Lister / Seller / Owner / Real Estate Agent)
-Must Have :
-The system shall allow listers to log in securely.
-
-
-The system shall require listers to upload valid identity proof.
-
-
-The system shall allow listers to add, update, and delete property listings.
-
-
-Should Have :
-The system shall allow listers to view feedback and reviews related to their properties.
-
-
-The system shall allow listers to view requests from buyers/renters.
-
-
-
-2.4 Admin
-Must Have :
-The system shall allow admins to log in securely.
-
-
-The system shall allow admins to verify listers and their documents.
-
-
-The system shall allow admins to manage user accounts (suspend/ban users).
-
-
-The system shall allow admins to detect fraudulent properties.
-
-
-Should Have :
-The system shall allow admins to view analytics of listings and site usage.
-
-
-The system shall allow admins to send notifications or announcements to all users.
-
-
-Could Have :
-The system shall allow admins to manage advertisements and promotions.
-
-
-
-2. Functional Requirements(Justifications) :-
-
-   
-2.1 Visitor (Unregistered User)
-
-
-Browse without logging in: Increases potential users by reducing the barrier to entry for visiting and getting a feel for the website.
-Restrict advanced features: Implements access control and motivates registration for full functionality.
-
-
-2.2 Registered User (Buyer / Renter)
-Secure login: Protects accounts and personal data from unauthorized access.
-
-
-Upload identity proof: Builds trust and ensures authenticity in transactions.
-
-
-Request property visits: Enables meaningful buyer–seller interaction, supporting core system use.
-
-
-Save property details: Improves usability by letting users revisit interested listings.
-
-
-View price history: Increases transparency and supports informed decisions.
-
-
-Compare property prices: Provides decision-support tools to evaluate options.
-
-
-Read and write reviews: Adds credibility through user feedback and social proof.
-
-
-360° property view: Enhances user experience with immersive visualization.
-
-
-Set alerts/notifications: Keeps users engaged by proactively updating them about matches.
-
-
-2.3 Registered User (Lister / Seller / Owner / Real Estate Agent)
-Secure login: Protects listings and user credentials from misuse.
-
-
-Upload identity proof: Ensures listers are verified, reducing fraudulent activity.
-
-
-Add, update, delete listings: Provides core CRUD operations essential for property management.
-
-
-View feedback/reviews: Allows improvement and reputation management for listers.
-
-
-View requests from buyers/renters: Facilitates smooth communication and transactions.
-
-
-
-2.4 Admin
-Secure login: Safeguards powerful administrative privileges from misuse.
-
-
-Verify listers and documents: Ensures platform trustworthiness by authenticating listers.
-
-
-Manage user accounts: Maintains platform integrity by enforcing rules and banning violators.
-
-
-Detect fraudulent properties: Protects users and upholds credibility of listings.
-
-
-View analytics: Provides insights into platform use and helps guide improvements.
-
-
-Send notifications/announcements: Allows efficient communication with the entire user base.
-
-
-Manage ads/promotions: Offers revenue generation without affecting core functionality.
 
 
 
