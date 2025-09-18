@@ -105,6 +105,8 @@ Could Have
 The system shall allow admins to manage advertisements and promotions.
 
 2) Functional Requirements(Justifications)
+
+   
 2.1 Visitor (Unregistered User)
 Browse without logging in: Increases potential users by reducing the barrier to entry for visiting and getting a feel for the website.
 Restrict advanced features: Implements access control and motivates registration for full functionality.
@@ -208,7 +210,7 @@ Maintainability
 Should Have → The system shall allow easy updates to property categories and features without downtime.
 
 
-3.1 Non-Functional Requirements (Justifications)
+3) Non-Functional Requirements (Justifications)
    
 Performance – Respond within 2 seconds: Ensures smooth user experience, reducing bounce rates and keeping the platform responsive under normal load.
 
@@ -254,7 +256,7 @@ The system shall ensure data privacy by protecting sensitive buyer/seller inform
 Could Have
 The system shall support currency and unit conversion (e.g., INR/USD, sq. ft. / sq. meter) for different markets.
 
-Domain Requirements (Justifications)
+4) Domain Requirements (Justifications)
 Comply with real estate laws/regulations: Ensures legality and trustworthiness of operations (e.g., RERA compliance in India).
 
 
