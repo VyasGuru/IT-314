@@ -108,10 +108,14 @@ The system shall allow admins to send notifications or announcements to all user
 Could Have :
 The system shall allow admins to manage advertisements and promotions.
 
+
+
 2) Functional Requirements(Justifications) :-
 
    
 2.1 Visitor (Unregistered User)
+
+
 Browse without logging in: Increases potential users by reducing the barrier to entry for visiting and getting a feel for the website.
 Restrict advanced features: Implements access control and motivates registration for full functionality.
 
@@ -158,6 +162,7 @@ View feedback/reviews: Allows improvement and reputation management for listers.
 
 
 View requests from buyers/renters: Facilitates smooth communication and transactions.
+
 
 
 2.4 Admin
@@ -214,6 +219,7 @@ Maintainability :
 Should Have → The system shall allow easy updates to property categories and features without downtime.
 
 
+
 3) Non-Functional Requirements (Justifications) :-
    
 Performance – Respond within 2 seconds: Ensures smooth user experience, reducing bounce rates and keeping the platform responsive under normal load.
@@ -259,6 +265,8 @@ The system shall ensure data privacy by protecting sensitive buyer/seller inform
 
 Could Have :
 The system shall support currency and unit conversion (e.g., INR/USD, sq. ft. / sq. meter) for different markets.
+
+
 
 4) Domain Requirements (Justifications) :-
 
