@@ -133,6 +133,31 @@ Should Have → The system shall be accessible from both desktop and mobile brow
 Maintainability
 Should Have → The system shall allow easy updates to property categories and features without downtime.
 
+
+3. Non-Functional Requirements (Justifications)
+   
+Performance – Respond within 2 seconds: Ensures smooth user experience, reducing bounce rates and keeping the platform responsive under normal load.
+
+
+Scalability – Support 10,000 concurrent users: Guarantees system growth and stability as the user base expands, aligning with future demand.
+
+
+Security – Store passwords in encrypted form: Protects user credentials from breaches, following best practices in information security.
+
+
+Usability – Intuitive interface: Enhances accessibility for both technical and non-technical users, improving adoption and satisfaction.
+
+
+Reliability – Maintain 99.5% uptime: Provides consistent availability, increasing user trust and supporting business continuity.
+
+
+Compatibility – Accessible via desktop and mobile browsers: Expands reach and convenience, ensuring inclusivity across devices.
+
+
+Maintainability – Easy updates without downtime: Facilitates adaptability to business changes while minimizing disruption for users.
+
+
+
 4. Domain Requirements
 Must Have
 The system shall comply with real estate laws and regulations of the operating country (e.g., RERA compliance in India).
