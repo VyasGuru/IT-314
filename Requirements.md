@@ -133,3 +133,47 @@ Should Have → The system shall be accessible from both desktop and mobile brow
 Maintainability
 Should Have → The system shall allow easy updates to property categories and features without downtime.
 
+4. Domain Requirements
+Must Have
+The system shall comply with real estate laws and regulations of the operating country (e.g., RERA compliance in India).
+
+
+The system shall ensure that only verified property documents (ownership papers, legal clearances) are uploaded and stored.
+
+
+The system shall support multiple property types such as residential, commercial, land, and rentals.
+
+
+The system shall maintain accurate property location details using maps.
+
+
+The system shall retain transaction and listing history for legal and audit purposes.
+
+
+The system shall ensure data privacy by protecting sensitive buyer/seller information as per legal standards (e.g., GDPR).
+
+Could Have
+The system shall support currency and unit conversion (e.g., INR/USD, sq. ft. / sq. meter) for different markets.
+
+Domain Requirements (Justifications)
+Comply with real estate laws/regulations: Ensures legality and trustworthiness of operations (e.g., RERA compliance in India).
+
+
+Upload only verified property documents: Prevents fraud and protects buyers by ensuring document authenticity.
+
+
+Support multiple property types: Increases system versatility and applicability across diverse real estate markets.
+
+
+Accurate property location with maps: Improves usability and decision-making by giving precise geographical context.
+
+
+Retain transaction and listing history: Supports audits, dispute resolution, and legal compliance.
+
+
+Ensure data privacy as per legal standards: Protects sensitive buyer/seller information, ensuring compliance (e.g., GDPR).
+
+
+Currency and unit conversion (Could Have): Enhances global usability by accommodating international users and markets.
+
+
