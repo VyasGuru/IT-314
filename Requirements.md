@@ -110,7 +110,7 @@ The system shall allow admins to manage advertisements and promotions.
 
 
 
-2) Functional Requirements(Justifications) :-
+2. Functional Requirements(Justifications) :-
 
    
 2.1 Visitor (Unregistered User)
