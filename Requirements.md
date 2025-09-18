@@ -134,7 +134,7 @@ Maintainability
 Should Have → The system shall allow easy updates to property categories and features without downtime.
 
 
-3. Non-Functional Requirements (Justifications)
+3.1 Non-Functional Requirements (Justifications)
    
 Performance – Respond within 2 seconds: Ensures smooth user experience, reducing bounce rates and keeping the platform responsive under normal load.
 
