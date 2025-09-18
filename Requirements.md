@@ -1,7 +1,7 @@
 Requirements for Real Estate Listing Website (With Priorities)
 The system enables visitors, registered users, and admins to interact with real estate listings.
 
-1. User Types
+1. User Types :-
 Visitor (Unregistered User)
 
 
@@ -18,10 +18,11 @@ Admin
 
 
 
-2. Functional Requirements
+2. Functional Requirements :-
 
 
 2.1 Visitor (Unregistered User)
+
 Must Have :
 The system shall allow visitors to browse the website without logging in.
 
@@ -32,6 +33,7 @@ The system shall restrict advanced features (such as saving properties, comparin
 
 
 2.2 Registered User (Buyer / Renter)
+
 Must Have :
 The system shall allow buyers/renters to log in securely.
 
@@ -106,7 +108,7 @@ The system shall allow admins to send notifications or announcements to all user
 Could Have :
 The system shall allow admins to manage advertisements and promotions.
 
-2) Functional Requirements(Justifications)
+2) Functional Requirements(Justifications) :-
 
    
 2.1 Visitor (Unregistered User)
@@ -182,37 +184,37 @@ Manage ads/promotions: Offers revenue generation without affecting core function
 
 
 
-3. Non-Functional Requirements
+3. Non-Functional Requirements :-
 
-Performance
+Performance :
 Must Have → The system shall respond to user requests within 2 seconds under normal load.
 
 
-Scalability
+Scalability :
 Must Have → The system shall support at least 10,000 concurrent users.
 
 
-Security
+Security :
 Must Have → The system shall store all passwords in encrypted form.
 
 
-Usability
+Usability :
 Must Have → The system shall provide an intuitive and user-friendly interface for both technical and non-technical users.
 
 
-Reliability
+Reliability :
 Must Have → The system shall maintain at least 99.5% uptime per year.
 
 
-Compatibility
+Compatibility :
 Should Have → The system shall be accessible from both desktop and mobile browsers.
 
 
-Maintainability
+Maintainability :
 Should Have → The system shall allow easy updates to property categories and features without downtime.
 
 
-3) Non-Functional Requirements (Justifications)
+3) Non-Functional Requirements (Justifications) :-
    
 Performance – Respond within 2 seconds: Ensures smooth user experience, reducing bounce rates and keeping the platform responsive under normal load.
 
@@ -236,8 +238,8 @@ Maintainability – Easy updates without downtime: Facilitates adaptability to b
 
 
 
-4. Domain Requirements
-Must Have
+4. Domain Requirements  :-
+Must Have :
 The system shall comply with real estate laws and regulations of the operating country (e.g., RERA compliance in India).
 
 
@@ -255,10 +257,12 @@ The system shall retain transaction and listing history for legal and audit purp
 
 The system shall ensure data privacy by protecting sensitive buyer/seller information as per legal standards (e.g., GDPR).
 
-Could Have
+Could Have :
 The system shall support currency and unit conversion (e.g., INR/USD, sq. ft. / sq. meter) for different markets.
 
-4) Domain Requirements (Justifications)
+4) Domain Requirements (Justifications) :-
+
+   
 Comply with real estate laws/regulations: Ensures legality and trustworthiness of operations (e.g., RERA compliance in India).
 
 
