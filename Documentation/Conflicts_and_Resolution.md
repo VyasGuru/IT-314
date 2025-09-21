@@ -1,36 +1,48 @@
 # Conflicts and Resolutions
 
-## Conflict 1: Information Accessibility vs. User Verification Requirements
-**Conflict:** The system must provide open access to property information for discovery while requiring verification from listers to ensure information credibility. Unverified listings could mislead property seekers, but extensive verification processes may deter legitimate listers.
+## Conflict 1: Easy Access vs. Verified Information
+**Conflict:** Users want open access to property listings, but unverified listings might be misleading. At the same time, asking listers for too much verification could discourage them from posting.  
 
-**Resolution:** Implement a tiered information display system where basic property details are visible to all users, but detailed information and contact details require lister verification. Use clear visual indicators to show verification status and allow filtering by verification level.
+**Resolution:** Show basic property info to everyone, but only allow access to detailed info and contact details after the lister is verified. Use clear icons or labels to show which listings are verified, and let users filter listings by verification status.  
 
-## Conflict 2: Open Platform vs. Quality Control
-**Conflict:** The platform should be easily accessible for property listing to encourage broad participation, but this conflicts with the need for quality control and fraud prevention. Too many restrictions discourage legitimate users, while too few restrictions allow low-quality or fraudulent listings. 
+---
 
-**Resolution:** Implement automated quality checks for basic listing requirements (required fields, image quality, duplicate detection) combined with community reporting mechanisms. Use a progressive verification system where listings start with "pending review" status and gain credibility over time through user interactions and admin verification.
+## Conflict 2: Open Platform vs. Maintaining Quality
+**Conflict:** The platform should let anyone list properties to encourage participation, but too many low-quality or fraudulent listings hurt credibility. Too many restrictions might scare off genuine users.  
 
-## Conflict 3: User Privacy vs. Communication Facilitation
-**Conflict:** Property seekers need to contact listers directly, but sharing personal contact information poses privacy risks for both parties. The platform must facilitate connections while protecting user privacy and preventing spam or misuse.  
+**Resolution:** Use automated checks for basic listing quality (like required fields, image quality, duplicate detection) and let users report suspicious listings. Start new listings with a “pending review” status and build credibility gradually through user interactions and admin verification.  
 
-**Resolution:** Implement an internal messaging system that keeps personal contact information private until both parties explicitly agree to share. Provide secure inquiry forms and scheduled communication features that allow interaction without immediate personal information exposure.
+---
 
-## Conflict 4: Academic Project Scope vs. Real-world Integration Needs
-**Conflict:** Real estate platforms typically require integration with mapping services, property databases, and government verification systems, but academic project constraints limit access to these external systems. This creates functionality gaps in property verification and location services.  
+## Conflict 3: Privacy vs. Easy Communication
+**Conflict:** Users need to contact listers, but sharing personal information openly can risk privacy or spam.  
 
-**Resolution:** Create mock integrations and simulated external service responses that demonstrate the integration architecture. Implement placeholder data for mapping and verification that can be easily replaced with real API connections in production. Focus on designing robust integration interfaces that can accommodate real services later.
+**Resolution:** Provide an internal messaging system that hides personal details until both parties agree to share. Include secure inquiry forms and scheduling options so users can communicate safely without exposing their information immediately.  
 
-## Conflict 5: Content Moderation vs. Platform Neutrality
-**Conflict:** The platform needs to moderate content to prevent fraudulent or inappropriate listings while maintaining neutrality and not interfering with legitimate property transactions. Over-moderation may remove legitimate listings, while under-moderation allows problematic content.  
+---
 
-**Resolution:** Implement community-driven moderation combined with automated content filters for obvious violations. Create clear listing guidelines and appeals processes for disputed removals. Use reputation systems where verified users and successful listings build credibility over time.
+## Conflict 4: Academic Project vs. Real-World Needs
+**Conflict:** Real estate platforms usually integrate with maps, property databases, and government verification systems, but as an academic project, access to these is limited.  
 
-## Conflict 6: Platform Scalability vs. Information Accuracy
-**Conflict:** As the platform grows to support 10,000+ concurrent users, maintaining real-time accuracy of property availability, pricing, and details becomes challenging. Outdated information frustrates users, but frequent updates strain system performance.  
+**Resolution:** Use mock integrations and simulated responses to demonstrate how real services would work. Add placeholder data for maps and verification that can later be replaced with actual APIs, focusing on building a flexible architecture.  
 
-**Resolution:** Implement intelligent caching strategies with automated expiration for property listings. Create notification systems that prompt listers to update stale listings and automatically flag outdated content. Use eventual consistency models for non-critical updates while maintaining real-time accuracy for essential property status information.
+---
 
-## Conflict 7: User Experience vs. Information Verification Complexity
-**Conflict:** Property seekers want quick access to comprehensive property information, but thorough information verification requires complex processes that may slow down the user experience. Simplified processes may compromise information quality.  
+## Conflict 5: Moderation vs. Neutrality
+**Conflict:** The platform needs to prevent fake or inappropriate listings, but over-moderation might remove legitimate posts, while under-moderation allows bad content.  
 
-**Resolution:** Create layered information presentation where basic details load immediately while verification badges and detailed information load progressively. Implement background verification processes that don't block user interaction while clearly indicating verification status. Provide quick preview modes with full detail views available on demand.
+**Resolution:** Combine automated filters for obvious problems with community-driven moderation. Provide clear guidelines, an appeal process, and reputation systems so verified and trustworthy users gain credibility over time.  
+
+---
+
+## Conflict 6: Scalability vs. Accuracy
+**Conflict:** As the platform grows, keeping listings up-to-date becomes harder. Outdated info frustrates users, but constant updates strain system performance.  
+
+**Resolution:** Use smart caching and automatic expiration for listings. Remind listers to update old listings and flag outdated ones automatically. For non-critical info, use eventual consistency, while keeping essential property details accurate in real time.  
+
+---
+
+## Conflict 7: Quick Access vs. Verification Detail
+**Conflict:** Users want fast access to property information, but full verification takes time, which could slow the experience.  
+
+**Resolution:** Show basic property details immediately and load verified info progressively. Verification can happen in the background without blocking users, and clear badges indicate the verification status. Offer quick previews with full details available on demand.  
