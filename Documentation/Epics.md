@@ -30,7 +30,7 @@
 <tr>
 <td><strong>Epic 4</strong></td>
 <td><strong>Communication and Connection Facilitation</strong></td>
-<td>Encompasses functionality to facilitate direct communication between property seekers and listers through inquiry forms, contact sharing, visit scheduling, and messaging systems.</td>
+<td>E Encompasses functionality to facilitate direct communication between property seekers and listers through contact sharing.</td>
 </tr>
 
 <tr>
@@ -42,7 +42,8 @@
 <tr>
 <td><strong>Epic 6</strong></td>
 <td><strong>System Security and Data Protection</strong></td>
-<td>Covers security features like two-factor authentication, audit logging, data protection, and privacy compliance. Includes backup systems and monitoring capabilities focused on information security.</td>
+<td>Covers security features like audit logging, data protection, and privacy compliance. Includes backup systems and monitoring capabilities focused on information security.
+</td>
 </tr>
 
 </tbody>
