@@ -30,7 +30,7 @@
 <tr>
 <td><strong>Epic 4</strong></td>
 <td><strong>Communication and Connection Facilitation</strong></td>
-<td>E Encompasses functionality to facilitate direct communication between property seekers and listers through contact sharing.</td>
+<td>Encompasses functionality to facilitate direct communication between property seekers and listers through contact sharing.</td>
 </tr>
 
 <tr>
