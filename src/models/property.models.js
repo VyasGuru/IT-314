@@ -65,15 +65,86 @@ const propertySchema = new mongoose.Schema(
       {
         type: String,
       }
-    ]
+    ],
 
+    priceHistory: [
+      {
+        price: {
+          type: String,
+          required: true,
+        },
+
+        date: {
+          type: Date,
+          default: Date.now(), //assign current date
+        }
+      }
+    ],
+
+    amenities: {
+      parking: { 
+        type: Boolean, 
+        default: false 
+      },
+
+      gym: { 
+        type: Boolean, 
+        default: false 
+      },
+
+      swimmingPool: { 
+        type: Boolean, 
+        default: false 
+      },
+
+      wifi: { 
+        type: Boolean, 
+        default: false 
+      },
+
+      security: { 
+        type: Boolean, 
+        default: false 
+      },
+
+      powerBackup: { 
+        type: Boolean, 
+        default: false 
+      },
+
+      garden: { 
+        type: Boolean, 
+        default: false 
+      },
+
+      lift: { 
+        type: Boolean, 
+        default: false 
+      },
+
+      clubhouse: { 
+        type: Boolean, 
+        default: false 
+      },
+
+      playArea: { 
+        type: Boolean, 
+        default: false 
+      },
+
+      furnished: { 
+        type: Boolean, 
+        default: false 
+      },
+
+    },
 
   },
 
-  { 
-    timestamps: true 
+  {
+    timestamps: true
   }
-  
+
 );
 
 export const Property = mongoose.model("Property", propertySchema);
