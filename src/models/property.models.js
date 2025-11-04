@@ -3,45 +3,77 @@ import mongoose from "mongoose";
 
 const propertySchema = new mongoose.Schema(
   {
+
     title: {
       type: String,
       required: true,
     },
+
     location: {
       type: String,
       required: true,
     },
+
     description: {
       type: String,
       required: true,
     },
-    yearOfBulid: {
-      type: Date,
+
+    yearOfBuild: {
+      type: Number,
       required: true,
     },
-    propertyType:{
+
+    propertyType: {
       type: String,
       required: true,
     },
+
     price: {
       type: Number,
       required: true,
     },
+
     size: {
       type: Number, // in square feet
       required: true,
     },
+
     bedrooms: {
       type: Number,
       required: true,
     },
+
     bathrooms: {
       type: Number,
       required: true,
     },
-    
+
+    balconies: {
+      type: Number,
+      required: true,
+    },
+
+    images: [
+      {
+        type: String,
+        required: true
+      }
+    ],
+
+    videos: [
+      {
+        type: String,
+      }
+    ]
+
+
   },
-  { timestamps: true }
+
+  { 
+    timestamps: true 
+  }
+  
 );
 
 export const Property = mongoose.model("Property", propertySchema);
