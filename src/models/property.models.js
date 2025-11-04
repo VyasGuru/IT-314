@@ -11,6 +11,18 @@ const propertySchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    description: {
+      type: String,
+      required: true,
+    },
+    yearOfBulid: {
+      type: Date,
+      required: true,
+    },
+    propertyType:{
+      type: String,
+      required: true,
+    },
     price: {
       type: Number,
       required: true,
@@ -27,6 +39,7 @@ const propertySchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    
   },
   { timestamps: true }
 );
