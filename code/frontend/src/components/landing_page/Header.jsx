@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom"; // 1. Import the Link component
 import { Search, Menu, Phone, Mail } from "lucide-react";
-import { GoogleLogin } from "@react-oauth/google";
 
 export function Header({ user, onGoogleLoginSuccess, onGoogleLoginError }) {
   // 2. Create a helper array for navigation links with paths
@@ -40,15 +39,9 @@ export function Header({ user, onGoogleLoginSuccess, onGoogleLoginError }) {
                 </div>
               ) : (
                 <>
-                  <GoogleLogin
-                    onSuccess={onGoogleLoginSuccess}
-                    onError={onGoogleLoginError}
-                    size="medium"
-                    width="120"
-                  />
-                  <button className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-1 rounded">
-                    Sign Up
-                  </button>
+                  <Link to="/login" className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-1 rounded">
+                    Sign In
+                  </Link>
                 </>
               )}
             </div>

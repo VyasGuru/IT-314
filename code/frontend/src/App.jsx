@@ -8,6 +8,10 @@ import { Footer } from "./components/landing_page/Footer";
 // Import page components
 import AboutPage from "./components/about_page/AboutPage"; // Make sure path is correct (e.g., about/AboutPage.jsx)
 import ContactPage from "./components/contact_page/ContactPage";
+<<<<<<< Updated upstream
+=======
+import LoginPage from "./components/login_page/LoginPage";
+>>>>>>> Stashed changes
 
 // Import components specific to the Landing Page
 import { Hero } from "./components/landing_page/Hero";
@@ -128,6 +132,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background">
+<<<<<<< Updated upstream
       {/* Header and Footer are outside Routes to appear on every page */}
       <Header
         user={user}
@@ -149,6 +154,45 @@ export default function App() {
       </Routes>
 
       <Footer />
+=======
+      <Routes>
+        <Route path="/" element={
+          <>
+            <Header
+              user={user}
+              onGoogleLoginSuccess={(credentialResponse) => {
+                const userObject = jwtDecode(credentialResponse.credential);
+                setUser(userObject);
+              }}
+              onGoogleLoginError={() => {
+                alert("Login Failed");
+              }}
+            />
+            <LandingPage />
+            <Footer />
+          </>
+        } />
+        <Route path="/about" element={
+          <>
+            <Header user={user} />
+            <AboutPage />
+            <Footer />
+          </>
+        } />
+        <Route path="/login" element={
+          <div className="min-h-screen bg-white flex items-center justify-center">
+            <LoginPage />
+          </div>
+        } />
+        <Route path="/contact" element={
+          <>
+            <Header user={user} />
+            <ContactPage />
+            <Footer />
+          </>
+        } />
+      </Routes>
+>>>>>>> Stashed changes
     </div>
   );
 }
