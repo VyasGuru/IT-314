@@ -10,6 +10,10 @@ import AboutPage from "./components/about_page/AboutPage"; // Make sure path is 
 import ContactPage from "./components/contact_page/ContactPage";
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+import LoginPage from "./components/login_page/LoginPage";
+>>>>>>> Stashed changes
 =======
 import LoginPage from "./components/login_page/LoginPage";
 >>>>>>> Stashed changes
@@ -138,6 +142,7 @@ export default function App() {
     <div className="min-h-screen bg-background">
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
       {/* Header and Footer are outside Routes to appear on every page */}
       <Header
         user={user}
@@ -160,6 +165,8 @@ export default function App() {
 
       <Footer />
 =======
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
       <Routes>
@@ -200,6 +207,9 @@ export default function App() {
         } />
       </Routes>
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
