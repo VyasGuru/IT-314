@@ -2,7 +2,7 @@
 
 ## Overview
 
-This folder contains all scripts required to **initialize, configure, and populate** the MongoDB database used in the *Real Estate Listing Platform* project.  
+This folder contains all scripts required to **initialize, configure, and populate** the MongoDB database.
 
 The setup automates:
 1. **Connection and configuration** of the MongoDB client.
