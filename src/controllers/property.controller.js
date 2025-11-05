@@ -6,30 +6,58 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 const getFilteredProperties = asyncHandler(async (req, res) => {
 
     try {
-        const { minPrice, maxPrice, location, minSize, maxSize, bedrooms, bathrooms } = req.query;
+        const { minPrice, maxPrice, location, minSize, maxSize, bedrooms, bathrooms, propertyType, area_sqft } = req.query;
 
         // Create an empty filter object
         let filter = {};
 
         // Add filters dynamically
         if (location) {
-            filter.location = { $regex: location, $options: "i" }; //regex used for find pattern, options = i , for case in sensetive
+            filter.location = {     //regex used for find pattern, options = i , for case in sensetive
+                $regex: location, 
+                $options: "i",
+            }; 
         }
 
         if (minPrice || maxPrice) {
             filter.price = {};
-            if (minPrice) filter.price.$gte = Number(minPrice); //gte = greater than equal to
-            if (maxPrice) filter.price.$lte = Number(maxPrice); //lte = less than equal to
+            if (minPrice){
+                filter.price.$gte = Number(minPrice); //gte = greater than equal to
+            }
+            if (maxPrice){
+                filter.price.$lte = Number(maxPrice); //lte = less than equal to
+            }
         }
 
         if (minSize || maxSize) {
             filter.size = {};
-            if (minSize) filter.size.$gte = Number(minSize); //convert minSize into number
-            if (maxSize) filter.size.$lte = Number(maxSize);
+            if (minSize){
+                filter.size.$gte = Number(minSize); //convert minSize into number
+            } 
+            if (maxSize) {
+                filter.size.$lte = Number(maxSize);
+            }
         }
 
-        if (bedrooms) filter.bedrooms = Number(bedrooms);
-        if (bathrooms) filter.bathrooms = Number(bathrooms);
+        if (bedrooms){
+            filter.bedrooms = Number(bedrooms);
+        } 
+
+        if (bathrooms){
+            filter.bathrooms = Number(bathrooms);
+        }   
+
+        if(propertyType){
+            filter.propertyType = propertyType;
+        }
+
+        if(area_sqft){
+            filter.size = area_sqft;
+        }
+
+        if(year_built){
+            filter.yearOfBuild.$lte = year_built;
+        }
 
         // Fetch filtered properties
         const properties = await Property.find(filter);
