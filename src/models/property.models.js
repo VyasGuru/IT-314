@@ -68,7 +68,30 @@ const propertySchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    
+    lister: {
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "User", 
+      required: true,
+      index: true 
+    },
 
+
+    status: {
+      type: String,
+      enum: ["Available", "Hidden", "Sold"],
+      default: "Available",
+      index: true
+    },
+
+
+    verification_status: {
+      type: String,
+      enum: ["Pending", "Verified", "Rejected"],
+      default: "Pending",
+      index: true
+    },
+    
     location: {
       type: locationSchema,
       required: true,
