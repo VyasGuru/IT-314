@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema(
 
         role: {
             type: String,
-            enum: ["admin", "user", "lister"], //role only one of this
+            enum: ['visitor', 'buyer', 'renter', 'lister', 'admin'], //role only one of this
             required: true
         },
 
@@ -51,8 +51,8 @@ const userSchema = new mongoose.Schema(
 
         verificationStatus: {
             type: String,
-            enum: ["pending", "verified", "rejected"],
-            default: "pending",
+            enum: ['pending', 'verified', 'rejected', 'not_submitted'],
+            default: 'not_submitted',
         },
 
         twoFactorEnabled: {

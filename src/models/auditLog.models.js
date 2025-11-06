@@ -1,13 +1,32 @@
 import mongoose from "mongoose";
 
-const auditLogSchema = new mongoose.Schema({
-  log_id: { type: String, unique: true, required: true },
-  user_firebase_uid: { type: String, ref: 'User' },
-  action: { type: String, required: true },
-  resource_type: { type: String },
-  resource_id: { type: String },
-  metadata: { type: Object },
-  timestamp: { type: Date, default: Date.now },
-});
+const auditLogSchema = new mongoose.Schema(
+    {
+        userFirebaseUid: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+        },
 
-export const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+        action: {
+            type: String,
+            required: true,
+        },
+
+        resourceType: {
+            type: String,
+        },
+
+        resourceId: {
+            type: String,
+        },
+
+        metadata: {
+            type: Object,
+        },
+    },
+    {
+        timestamps: true,
+    }
+);
+
+export const AuditLog = mongoose.model("AuditLog", auditLogSchema);
