@@ -23,7 +23,8 @@ app.use(cookieParser());
 
 
 //routes
-import router from './routes/property.routes.js'
+import router from "./routes/property.routes.js";
+import savedListingRoutes  from "./routes/property.routes.js";
 
 
 //routes declaration
@@ -32,11 +33,13 @@ app.get("/", (req, res) => {
 });
 
 
-app.use("/api/properties", router)
+app.use("/api/properties", router);
+app.use("/api/saved-listings", savedListingRoutes);
 
 
 //URL created like this after above statement
 //http://localhost:8000/api/properties
+//http://localhost:8000/api/saved-listings
 
 
 // Export the Express app so it can be used in server.js or index.js
