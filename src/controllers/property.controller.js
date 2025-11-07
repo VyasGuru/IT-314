@@ -6,14 +6,14 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 const getFilteredProperties = asyncHandler(async (req, res) => {
 
     try {
-        const { minPrice, maxPrice, location, minSize, maxSize, bedrooms, bathrooms, propertyType, area_sqft } = req.query;
+        const { minPrice, maxPrice, location, minSize, maxSize, bedrooms, bathrooms, propertyType, year_built, amenities } = req.query;
 
         // Create an empty filter object
         let filter = {};
 
         // Add filters dynamically
         if (location) {
-            filter.location = {     //regex used for find pattern, options = i , for case in sensetive
+            filter["location.city"] = {     //regex used for find pattern, options = i , for case in sensetive
                 $regex: location, 
                 $options: "i",
             }; 
@@ -51,12 +51,43 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
             filter.propertyType = propertyType;
         }
 
-        if(area_sqft){
-            filter.size = area_sqft;
+        if(year_built){
+            filter.yearBuild = {};
+            filter.yearBuild.$lte = Number(year_built);
         }
 
-        if(year_built){
-            filter.yearOfBuild.$lte = year_built;
+        if (amenities) {
+            // List of valid amenity
+            const validAmenities = [
+                "parking",
+                "gym",
+                "swimmingPool",
+                "wifi",
+                "security",
+                "powerBackup",
+                "garden",
+                "lift",
+                "clubhouse",
+                "playArea",
+                "furnished",
+            ];
+
+            // Convert amenities string (e.g., "wifi,gym") into an array
+            const selectedAmenities = amenities.split(",").map((a) => a.trim());
+
+            // Filter out valid ones
+            const validSelected = selectedAmenities.filter((a) =>
+                validAmenities.includes(a)
+            );
+
+            // write logiv for or operator, means any one of amenities present then display
+            if (validSelected.length > 0) {
+                filter.$or = validSelected.map((a) => (
+                    {
+                        [`amenities.${a}`]: true,
+                    }
+                ));
+            }
         }
 
         // Fetch filtered properties
