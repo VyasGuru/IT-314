@@ -54,3 +54,31 @@ const save = asyncHandler( async (req, res) => {
 
     
 });
+
+
+//remove a saved listing
+
+const removeSavedListing = asyncHandler( async (req, res) => {
+
+    //for below action first middle checked if user is loggin or not , that not check at
+    //if middle exicute then it's attch user in req and then we access req.user
+    const userId = req.user._id;  //for this action first middle checked if user is loggin or not, that not check at
+
+    const { listingId } = req.params;
+
+    const deleted = await SavedListing.findOneAndDelete(
+        {
+            userFirebaseUid: userId,
+            listingId,
+        }
+    );
+
+    if(!deleted){
+        throw new ApiError(404, "Saved listing not found");
+    }
+
+    res.status(200).json(
+        new ApiResponse(200, null, "Listing removed successfully.")
+    );
+
+});
