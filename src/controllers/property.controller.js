@@ -158,6 +158,9 @@ const createProperty = asyncHandler(async (req, res) => {
         new ApiResponse(201, newProperty, "Property created successfully, pending verification")
     );
 });
+
+
 export {
-    getFilteredProperties,createProperty
+    getFilteredProperties,
+    createProperty,
 }
