@@ -78,6 +78,55 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
 
 });
 
+const createProperty = asyncHandler(async (req, res) => {
+    
+    const { 
+        title, description, yearBuild, propertyType, 
+        price, size, bedrooms, bathrooms, balconies, 
+        amenities, 
+        location   
+    } = req.body;
+
+    const images = req.files; 
+
+    if (!images || images.length === 0) {
+        throw new ApiError(400, "At least one image is required");
+    }
+    const imageUrls = images.map(file => file.path); 
+
+    
+    const amenitiesObject = JSON.parse(amenities);
+    const locationObject = JSON.parse(location);
+
+    
+    const newProperty = await Property.create({
+        lister: req.user._id, 
+        title,
+        location: locationObject,
+        description,
+        yearBuild: Number(yearBuild),
+        propertyType,
+        price: Number(price),
+        size: Number(size),
+        bedrooms: Number(bedrooms),
+        bathrooms: Number(bathrooms),
+        balconies: Number(balconies),
+        images: imageUrls,
+        amenities: amenitiesObject,
+        priceHistory: [{
+            price: Number(price), 
+            reason: "Initial listing"
+        }]
+    });
+
+    if (!newProperty) {
+        throw new ApiError(500, "Something went wrong while creating the property");
+    }
+
+    return res.status(201).json(
+        new ApiResponse(201, newProperty, "Property created successfully, pending verification")
+    );
+});
 export {
-    getFilteredProperties,
+    getFilteredProperties,createProperty
 }
