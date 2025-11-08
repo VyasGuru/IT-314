@@ -25,7 +25,7 @@ app.use(cookieParser());
 //routes
 import router from "./routes/property.routes.js";
 import userRoutes from "./routes/user.routes.js";
-import savedListingRoutes  from "./routes/property.routes.js";
+import savedListingRoutes  from "./routes/savedListing.routes.js";
 
 
 //routes declaration

@@ -12,6 +12,7 @@ import admin from "firebase-admin"
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { User } from "../models/user.models.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,7 +63,9 @@ const verifyFirebaseToken = asyncHandler(async (req, _, next) => {
         const token = authHeader.split(" ")[1];
         const decoded = await admin.auth().verifyIdToken(token);
 
-        req.user = decoded;
+        const user = await User.findOne({firebaseUid: decoded.uid});
+
+        req.user = user;
         next();
     }
 
