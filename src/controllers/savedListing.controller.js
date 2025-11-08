@@ -5,27 +5,10 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 
-
-
-
-//routes and index.js and app.js not connect at
-
-
-
-
-
-
-
-
 //save listing
 const saveUserListing = asyncHandler( async (req, res) => {
 
-    //for below action first middle checked if user is loggin or not , that not check at
-    //if middle exicute then it's attch user in req and then we access req.user
-    const userId = req.user._id;  //for this action first middle checked if user is loggin or not, that not check at
-
-
-
+    const userId = req.user._id;  //for this action first middle checked if user is loggin or not
 
 
     const { listingId, notes } = req.body;
@@ -71,9 +54,7 @@ const saveUserListing = asyncHandler( async (req, res) => {
 //remove a saved listing
 const removeSavedListing = asyncHandler( async (req, res) => {
 
-    //for below action first middle checked if user is loggin or not , that not check at
-    //if middle exicute then it's attch user in req and then we access req.user
-    const userId = req.user._id;  //for this action first middle checked if user is loggin or not, that not check at
+    const userId = req.user._id;  //for this action first middle checked if user is loggin or not
 
     const { listingId } = req.params;
 

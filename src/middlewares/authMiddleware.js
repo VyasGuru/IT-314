@@ -3,8 +3,34 @@
 
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import jwt from "jsonwebtoken";
-import { User } from "../models/user.models.js";
+import admin from "firebase-admin"
+
+
+// import serviceAccount from "../db/firebaseServiceAccountKey.json" assert { type: "json" };
+
+//above statement not work in some node module, so for this use below code
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const serviceAccount = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "../db/firebaseServiceAccountKey.json"), "utf-8")
+);
+
+
+
+
+
+admin.initializeApp(
+    {
+        credential: admin.credential.cert(serviceAccount),
+    }
+);
+
+
 
 // This is our simulated admin check
 const checkAdmin = (req, res, next) => {
@@ -24,31 +50,29 @@ const checkAdmin = (req, res, next) => {
 };
 
 
+const verifyFirebaseToken = asyncHandler(async (req, _, next) => {
 
-export const verifyJWT = asyncHandler(async (req, _, next) => {
-    try {
-        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
+    try{
+        const authHeader = req.headers.authorization;
 
-        if (!token) {
-            throw new ApiError(401, "Unauthorized request");
+        if(!authHeader || !authHeader.startsWith("Bearer ")){
+            throw new ApiError(401, "No token provided");
         }
 
-        const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-        const user = await User.findOne({ firebaseUid: decodedToken?.firebaseUid });
+        const token = authHeader.split(" ")[1];
+        const decoded = await admin.auth().verifyIdToken(token);
 
-        if (!user) {
-            throw new ApiError(401, "Invalid Access Token");
-        }
+        req.user = decoded;
+        next();
+    }
 
-        req.user = user; 
-        next(); 
-    } catch (error) {
-        throw new ApiError(401, error?.message || "Invalid access token");
+    catch(err){
+        throw new ApiError(401, `Error while verification of token. Error is : ${err.message}`);
     }
 });
 
 
-export const verifyLister = asyncHandler(async (req, _, next) => {
+const verifyLister = asyncHandler(async (req, _, next) => {
    
     const userRole = req.user.role;
 
@@ -59,4 +83,8 @@ export const verifyLister = asyncHandler(async (req, _, next) => {
     next(); 
 });
 
-export { checkAdmin, verifyJWT, verifyLister };
+export { 
+    checkAdmin, 
+    verifyFirebaseToken, 
+    verifyLister 
+};

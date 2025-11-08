@@ -34,8 +34,8 @@ const userSchema = new mongoose.Schema(
 
         phone: {
             type: String,
-            required: function () {      //if user is admin then phone number is required
-                return this.role === "admin";
+            required: function () {      //if user is lister then phone number is required
+                return this.role === "lister";
             }, 
 
             //validate format of phone numbers that correct or not
