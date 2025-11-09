@@ -159,8 +159,68 @@ const createProperty = asyncHandler(async (req, res) => {
     );
 });
 
+const updatePropertyDetails = asyncHandler(async (req, res) => {
+    
+    const { propertyId } = req.params; 
+    
+    // Get all the new, updated info from the form
+    const { 
+        title, description, yearBuild, propertyType, 
+        price, size, bedrooms, bathrooms, balconies, 
+        amenities, location
+    } = req.body;
+
+    // Find the property in the database first
+    const property = await Property.findById(propertyId);
+    
+    if (!property) {
+        throw new ApiError(404, "Property not found");
+    }
+
+    // Security Check: what to do if real owner exist or not
+    
+    if (property.lister.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "You don't have permission to edit this"); 
+    }
+
+    // Check if the price was changed
+    let newPriceHistory = property.priceHistory;
+    if (price && Number(price) !== property.price) {
+        
+        newPriceHistory.push({
+            price: Number(price),
+            reason: "Lister updated price"
+        });
+    }
+
+    // Update all the property details.
+    property.title = title || property.title;
+    property.description = description || property.description;
+    property.yearBuild = Number(yearBuild) || property.yearBuild;
+    property.price = Number(price) || property.price;
+    property.size = Number(size) || property.size;
+    property.propertyType = propertyType || property.propertyType;
+    property.bedrooms = Number(bedrooms) || property.bedrooms;
+    property.bathrooms = Number(bathrooms) || property.bathrooms;
+    property.balconies = Number(balconies) || property.balconies;
+
+    if (amenities) property.amenities = JSON.parse(amenities);
+   
+    if (location) property.location = JSON.parse(location);
+
+    property.priceHistory = newPriceHistory;
+    property.verification_status = "Pending"; 
+
+    const updatedProperty = await property.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, updatedProperty, "Property updated, pending re-verification")
+    );
+});
+
 
 export {
     getFilteredProperties,
     createProperty,
+    updatePropertyDetails,
 }
