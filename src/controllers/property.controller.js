@@ -218,9 +218,34 @@ const updatePropertyDetails = asyncHandler(async (req, res) => {
     );
 });
 
+const updatePropertyStatus = asyncHandler(async (req, res) => {
+    const { propertyId } = req.params; // This is the Property's _id
+    const { status } = req.body; // Expecting {"status": "hidden"} or {"status": "active"}
+
+    if (status !== "active" && status !== "hidden") {
+        throw new ApiError(400, "Invalid status. Must be 'active' or 'hidden'.");
+    }
+
+    const listing = await Listing.findOne({ propertyId: propertyId });
+    if (!listing) throw new ApiError(404, "Listing for this property not found");
+
+    // Security Check:To check whether you are owner or not
+    if (listing.listerId.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "You can't change this property's status");
+    }
+
+    // This is the "hide" feature. We only update the listing.
+    listing.status = status;
+    const updatedListing = await listing.save();
+
+    return res.status(200).json(
+        new ApiResponse(200, updatedListing, "Property status updated")
+    );
+});
 
 export {
     getFilteredProperties,
     createProperty,
     updatePropertyDetails,
+    updatePropertyStatus,
 }
