@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.models.js";
 import admin from "firebase-admin";
+import fetch from "node-fetch"; //for reset password and call firebase REST API
 
 //register
 const registerUser = asyncHandler(async (req, res) => {
@@ -195,10 +196,83 @@ const getProfile = asyncHandler(async (req, res) => {
 });
 
 
+//change password
+const resetPassword = asyncHandler(async (req, res) => {
+
+    const email = req.user.email;
+
+    const {currentPassword, newPassword} = req.body;
+
+    if(!currentPassword || !newPassword){
+        throw new ApiError(400, "Both current and new password are required.");
+    }
+
+    try {
+        
+        //verify password
+        const verifyResponse = await fetch(
+            "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + process.env.FIREBASE_WEB_API_KEY,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(
+                    {
+                        email,
+                        password: currentPassword,
+                        returnSecureToken: true,
+                    }
+                ),
+            }
+        );
+
+        //check
+        if(!verifyResponse.ok){
+            throw new ApiError(401, "Invalid current password");
+        }
+
+        //store json format
+        const verifyData = await verifyResponse.json();
+
+        const idToken = verifyData.idToken;
+
+
+        //update password
+        const updateResponse = await fetch(
+            "https://identitytoolkit.googleapis.com/v1/accounts:update?key=" + process.env.FIREBASE_WEB_API_KEY,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(
+                    {
+                        idToken,
+                        password: newPassword,
+                        returnSecureToken: false,
+                    }
+                ),
+            }
+        );
+
+        if(!updateResponse.ok){
+            throw new ApiError(400, "Failed to update password");
+        }
+
+        res.status(200).json(
+            new ApiResponse(200, null, "Password updated successfully")
+        );
+    } 
+    
+    catch (err) {
+        throw new ApiError(500, `Error while reset Password. \n Error is : ${err.message}`)   
+    }
+
+});
+
+
 export{
     registerUser,
     loginUser,
     googleLogin,
     logoutUser,
     getProfile,
+    resetPassword,
 };
