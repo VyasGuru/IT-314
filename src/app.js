@@ -26,9 +26,12 @@ app.use(cookieParser());
 import router from "./routes/property.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import savedListingRoutes  from "./routes/savedListing.routes.js";
+import propertyComparisonRoutes from "./routes/propertyComparison.routes.js";
 
 
 //routes declaration
+
+//ust check backend run or not
 app.get("/", (req, res) => {
   res.send("Real Estate Backend API is running...");
 });
@@ -37,12 +40,14 @@ app.get("/", (req, res) => {
 app.use("/api/properties", router);
 app.use("/api/saved-listings", savedListingRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/comparison", propertyComparisonRoutes);
 
 
 //URL created like this after above statement
 //http://localhost:8000/api/properties
 //http://localhost:8000/api/saved-listings
 //http://localhost:8000/api/users
+//http://localhost:8000/api/comparison
 
 
 // Export the Express app so it can be used in server.js or index.js
