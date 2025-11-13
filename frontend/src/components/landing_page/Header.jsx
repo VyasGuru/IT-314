@@ -1,7 +1,16 @@
+import { Link } from "react-router-dom"; // 1. Import the Link component
 import { Search, Menu, Phone, Mail } from "lucide-react";
-import { GoogleLogin } from "@react-oauth/google";
 
 export function Header({ user, onGoogleLoginSuccess, onGoogleLoginError }) {
+  // 2. Create a helper array for navigation links with paths
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "Properties", path: "/properties" },
+  { name: "About", path: "/about" },
+    { name: "Services", path: "/services" },
+    { name: "Contact", path: "/contact" },
+  ];
+
   return (
     <header className="border-b bg-gray-50/95 backdrop-blur sticky top-0 z-50">
       {/* Top bar */}
@@ -30,15 +39,9 @@ export function Header({ user, onGoogleLoginSuccess, onGoogleLoginError }) {
                 </div>
               ) : (
                 <>
-                  <GoogleLogin
-                    onSuccess={onGoogleLoginSuccess}
-                    onError={onGoogleLoginError}
-                    size="medium"
-                    width="120"
-                  />
-                  <button className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-1 rounded">
-                    Sign Up
-                  </button>
+                  <Link to="/login" className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-1 rounded">
+                    Sign In
+                  </Link>
                 </>
               )}
             </div>
@@ -50,22 +53,24 @@ export function Header({ user, onGoogleLoginSuccess, onGoogleLoginError }) {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2">
+            {/* 3. Wrap the logo in a Link to navigate home */}
+            <Link to="/" className="flex items-center gap-2">
               <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold">FS</span>
               </div>
               <span className="text-xl font-bold">FindMySquare</span>
-            </div>
+            </Link>
 
             <nav className="hidden lg:flex items-center gap-6">
-              {["Home", "Properties", "About", "Services", "Contact"].map((link) => (
-                <a
-                  key={link}
-                  href="#"
+              {/* 4. Map over the new array and use Link component */}
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.path} // Use `to` instead of `href`
                   className="text-gray-600 hover:text-blue-600 transition-colors"
                 >
-                  {link}
-                </a>
+                  {link.name}
+                </Link>
               ))}
             </nav>
           </div>
