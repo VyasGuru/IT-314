@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.models.js";
 import admin from "firebase-admin";
 import fetch from "node-fetch"; //for reset password and call firebase REST API
+import { sendEmail } from "../utils/sendMail.js";
 
 //register
 const registerUser = asyncHandler(async (req, res) => {
@@ -152,7 +153,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 
     try {
 
-        const uid = req.user?.uid;
+        const uid = req.user.firebaseUid;
 
         if(!uid){
             throw new ApiError(400, "User not found");
@@ -177,7 +178,7 @@ const getProfile = asyncHandler(async (req, res) => {
 
     try {
 
-        const uid = req.user.uid;
+        const uid = req.user.firebaseUid;
 
         const user = await User.findOne({firebaseUid: uid});
 
@@ -196,7 +197,7 @@ const getProfile = asyncHandler(async (req, res) => {
 });
 
 
-//change password
+//change password -> if user know current password and user not have email with him then use this functionality
 const resetPassword = asyncHandler(async (req, res) => {
 
     const email = req.user.email;
@@ -268,6 +269,54 @@ const resetPassword = asyncHandler(async (req, res) => {
 });
 
 
+//forget password -> if user have gmail login , then use this functionality
+const forgetPassword = asyncHandler(async (req, res) => {
+
+    const {email} = req.body;
+
+    if(!email){
+        throw new ApiError(400, "Email is required");
+    }
+
+
+    try {
+        
+        const user = await admin.auth().getUserByEmail(email);
+
+        if(!user){
+            return new ApiError(404, "Invalid Email. No Account Found");
+        }
+
+        const resetLink = await admin.auth().generatePasswordResetLink(email);
+
+        if(!resetLink){
+            throw new ApiError(500, "Error in generating reset link");
+        }
+
+        //it's take 5-6 minute
+        await sendEmail(
+            email,
+            "Reset your password",
+            `
+                <h3>Hello ${user.displayName || "User"},</h3>
+                <p>Click the link below to reset your password:</p>
+                <a href="${resetLink}" target="_blank">Reset Password</a>
+                <br><br>
+                <p>If you did not request this, ignore this email.</p>
+            `
+        );
+
+        res.status(200).json(
+            new ApiResponse(200, {resetLink} , "Password reset email sent successfully")
+        );
+    } 
+    
+    catch (err) {
+        throw new ApiError(500, `Error in password recovery. \n Error is : ${err.message}`)
+    }
+});
+
+
 export{
     registerUser,
     loginUser,
@@ -275,4 +324,5 @@ export{
     logoutUser,
     getProfile,
     resetPassword,
+    forgetPassword,
 };

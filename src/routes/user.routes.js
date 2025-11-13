@@ -7,6 +7,7 @@ import {
     logoutUser,
     getProfile,
     resetPassword,
+    forgetPassword,
 } from "../controllers/user.controller.js";
 
 import { verifyFirebaseToken } from "../middlewares/authMiddleware.js";
@@ -20,5 +21,6 @@ router.post("/google-login", googleLogin);
 router.post("/logout", verifyFirebaseToken, logoutUser);
 router.get("/profile", verifyFirebaseToken, getProfile);
 router.post("/reset-password", verifyFirebaseToken, resetPassword);
+router.post("/forgot-password", forgetPassword);
 
 export default router;
