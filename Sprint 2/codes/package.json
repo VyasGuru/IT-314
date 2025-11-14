@@ -1,0 +1,19 @@
+{
+  "name": "real-estate-mongodb",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "init-db": "node initDb.js",
+    "sample-data": "node sampleData.js",
+    "examples": "node examples.js",
+    "test": "node examples.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "mongodb": "^6.20.0"
+  }
+}
