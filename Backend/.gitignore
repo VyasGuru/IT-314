@@ -120,4 +120,7 @@ dist
 #firebase file
 src/db/firebaseServiceAccountKey.json
 
+# add package-lock.json
+package-lock.json
+
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node
