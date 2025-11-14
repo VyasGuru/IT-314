@@ -1,15 +1,27 @@
-import { Link } from "react-router-dom"; // 1. Import the Link component
-import { Search, Menu, Phone, Mail } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Search, Menu, Phone, Mail, LogOut } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 
-export function Header({ user, onGoogleLoginSuccess, onGoogleLoginError }) {
-  // 2. Create a helper array for navigation links with paths
+export function Header({ user }) {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
   const navLinks = [
     { name: "Home", path: "/" },
     { name: "Properties", path: "/properties" },
-  { name: "About", path: "/about" },
+    { name: "About", path: "/about" },
     { name: "Services", path: "/services" },
     { name: "Contact", path: "/contact" },
   ];
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   return (
     <header className="border-b bg-gray-50/95 backdrop-blur sticky top-0 z-50">
@@ -29,13 +41,27 @@ export function Header({ user, onGoogleLoginSuccess, onGoogleLoginError }) {
             </div>
             <div className="hidden md:flex items-center gap-4">
               {user ? (
-                <div className="flex items-center gap-2">
-                  <img
-                    src={user.picture}
-                    alt={user.name}
-                    className="w-8 h-8 rounded-full"
-                  />
-                  <span>{user.name}</span>
+                <div className="flex items-center gap-3">
+                  {user.picture && (
+                    <img
+                      src={user.picture}
+                      alt={user.name}
+                      className="w-8 h-8 rounded-full"
+                    />
+                  )}
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{user.name || user.email}</span>
+                    {user.role && (
+                      <span className="text-xs text-gray-500 capitalize">{user.role}</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleSignOut}
+                    className="flex items-center gap-1 text-gray-600 hover:text-red-600 transition-colors"
+                    title="Sign Out"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
                 </div>
               ) : (
                 <>

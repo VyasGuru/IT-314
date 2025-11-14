@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Routes, Route } from 'react-router-dom'; // 1. Import router components
+import { Routes, Route } from 'react-router-dom';
+import { useAuth } from "./contexts/AuthContext";
 
 // Import components used across all pages
 import { Header } from "./components/landing_page/Header";
@@ -9,29 +10,7 @@ import { Footer } from "./components/landing_page/Footer";
 import AboutPage from "./components/about_page/AboutPage";
 import ContactPage from "./components/contact_page/ContactPage";
 import LoginPage from "./components/login_page/LoginPage";
-
-// Placeholder pages for Properties and Services
-const PropertiesPage = () => (
-  <>
-    <Header />
-    <div className="container mx-auto px-4 py-12">
-      <h1 className="text-4xl font-bold mb-4">Properties</h1>
-      <p className="text-gray-600">Browse our extensive collection of properties.</p>
-    </div>
-    <Footer />
-  </>
-);
-
-const ServicesPage = () => (
-  <>
-    <Header />
-    <div className="container mx-auto px-4 py-12">
-      <h1 className="text-4xl font-bold mb-4">Services</h1>
-      <p className="text-gray-600">Explore our comprehensive real estate services.</p>
-    </div>
-    <Footer />
-  </>
-);
+import RegisterPage from "./components/login_page/RegisterPage";
 
 // Import components specific to the Landing Page
 import { Hero } from "./components/landing_page/Hero";
@@ -39,7 +18,6 @@ import { PropertyCard } from "./components/landing_page/PropertyCard";
 import { PropertyFilters } from "./components/landing_page/PropertyFilters";
 import { PropertyDetails } from "./components/landing_page/PropertyDetails";
 import { Grid, List } from "lucide-react";
-import { jwtDecode } from "jwt-decode";
 
 // --- Data and Components for the Landing Page ---
 
@@ -148,29 +126,28 @@ const LandingPage = () => {
 
 // 3. Update the main App component to be a router
 export default function App() {
-  const [user, setUser] = useState(null); // Keep user state here to be accessible by all pages
+  const { currentUser, userRole } = useAuth();
+
+  // Format Firebase user for display
+  const user = currentUser 
+    ? {
+        name: currentUser.displayName || currentUser.email,
+        email: currentUser.email,
+        picture: currentUser.photoURL,
+        role: userRole,
+      }
+    : null;
 
   return (
     <div className="min-h-screen bg-background">
       <Routes>
         <Route path="/" element={
           <>
-            <Header
-              user={user}
-              onGoogleLoginSuccess={(credentialResponse) => {
-                const userObject = jwtDecode(credentialResponse.credential);
-                setUser(userObject);
-              }}
-              onGoogleLoginError={() => {
-                alert("Login Failed");
-              }}
-            />
+            <Header user={user} />
             <LandingPage />
             <Footer />
           </>
         } />
-        <Route path="/properties" element={<PropertiesPage />} />
-        <Route path="/services" element={<ServicesPage />} />
         <Route path="/about" element={
           <>
             <Header user={user} />
@@ -181,6 +158,11 @@ export default function App() {
         <Route path="/login" element={
           <div className="min-h-screen bg-white flex items-center justify-center">
             <LoginPage />
+          </div>
+        } />
+        <Route path="/register" element={
+          <div className="min-h-screen bg-white flex items-center justify-center">
+            <RegisterPage />
           </div>
         } />
         <Route path="/contact" element={

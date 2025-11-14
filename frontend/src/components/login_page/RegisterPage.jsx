@@ -1,17 +1,20 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { Shield, User } from "lucide-react";
+import { Shield, User, AlertCircle } from "lucide-react";
+import { isAllowedAdminEmail } from "../../config/adminEmails";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [selectedRole, setSelectedRole] = useState(null); // 'admin' or 'user'
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
-  const { signInWithEmailPassword, signInWithGoogle } = useAuth();
+  const { registerWithEmailPassword, signInWithGoogle } = useAuth();
 
   // If no role selected, show role selection
   if (!selectedRole) {
@@ -25,7 +28,7 @@ export default function LoginPage() {
               </div>
               <span className="text-[#0066FF] text-xl font-semibold">FindMySquare</span>
             </Link>
-            <h2 className="text-white text-2xl font-normal mb-2">Sign in to your account</h2>
+            <h2 className="text-white text-2xl font-normal mb-2">Create your account</h2>
             <p className="text-gray-400 text-sm">Please select your account type</p>
           </div>
 
@@ -39,7 +42,7 @@ export default function LoginPage() {
               </div>
               <div className="flex-1 text-left">
                 <h3 className="text-white font-semibold text-lg">Administrator</h3>
-                <p className="text-gray-400 text-sm">Sign in as an admin</p>
+                <p className="text-gray-400 text-sm">Register as an admin (Authorized emails only)</p>
               </div>
             </button>
 
@@ -52,7 +55,7 @@ export default function LoginPage() {
               </div>
               <div className="flex-1 text-left">
                 <h3 className="text-white font-semibold text-lg">User</h3>
-                <p className="text-gray-400 text-sm">Sign in as a regular user</p>
+                <p className="text-gray-400 text-sm">Register as a regular user</p>
               </div>
             </button>
           </div>
@@ -67,38 +70,56 @@ export default function LoginPage() {
     );
   }
 
-  // Role selected, show login form
+  // Role selected, show registration form
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    // Validate admin email if registering as admin
+    if (selectedRole === "admin") {
+      const normalizedEmail = email.toLowerCase().trim();
+      if (!isAllowedAdminEmail(normalizedEmail)) {
+        setError("Only authorized emails can register as administrators. Please contact support if you need admin access.");
+        return;
+      }
+    }
+
+    // Validation
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await signInWithEmailPassword(email, password, selectedRole);
+      await registerWithEmailPassword(email, password, name, selectedRole);
       navigate("/");
     } catch (error) {
       // Handle different Firebase auth errors
-      if (error.message && error.message.includes("registered as")) {
-        setError(error.message);
+      if (error.code === "auth/unauthorized-admin" || error.message?.includes("authorized")) {
+        setError("Only authorized emails can register as administrators. Please contact support if you need admin access.");
       } else {
         switch (error.code) {
+          case "auth/email-already-in-use":
+            setError("This email is already registered.");
+            break;
           case "auth/invalid-email":
             setError("Invalid email address.");
             break;
-          case "auth/user-disabled":
-            setError("This account has been disabled.");
+          case "auth/weak-password":
+            setError("Password is too weak.");
             break;
-          case "auth/user-not-found":
-            setError("No account found with this email.");
-            break;
-          case "auth/wrong-password":
-            setError("Incorrect password.");
-            break;
-          case "auth/too-many-requests":
-            setError("Too many failed attempts. Please try again later.");
+          case "auth/operation-not-allowed":
+            setError("Email/password accounts are not enabled.");
             break;
           default:
-            setError(error.message || "Failed to sign in. Please try again.");
+            setError(error.message || "Failed to create account. Please try again.");
         }
       }
     } finally {
@@ -114,7 +135,9 @@ export default function LoginPage() {
       navigate("/");
     } catch (error) {
       console.error("Google sign-in error:", error);
-      if (error.message && error.message.includes("registered as")) {
+      if (error.message && error.message.includes("authorized")) {
+        setError("Only authorized emails can register as administrators. Please contact support if you need admin access.");
+      } else if (error.message && error.message.includes("registered as")) {
         setError(error.message);
       } else if (error.code === "auth/popup-closed-by-user") {
         setError("Sign-in was cancelled.");
@@ -138,7 +161,7 @@ export default function LoginPage() {
             </div>
             <span className="text-[#0066FF] text-xl font-semibold">FindMySquare</span>
           </Link>
-          <h2 className="text-white text-2xl font-normal">Sign in as {selectedRole === "admin" ? "Administrator" : "User"}</h2>
+          <h2 className="text-white text-2xl font-normal">Register as {selectedRole === "admin" ? "Administrator" : "User"}</h2>
           <button
             onClick={() => setSelectedRole(null)}
             className="mt-2 text-gray-400 hover:text-white text-sm"
@@ -147,27 +170,83 @@ export default function LoginPage() {
           </button>
         </div>
 
+        {selectedRole === "admin" && (
+          <div className="mb-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-3 flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-yellow-400 text-sm font-medium">Admin Registration Restricted</p>
+              <p className="text-yellow-300/80 text-xs mt-1">
+                Only authorized email addresses can register as administrators. If your email is not authorized, please contact support.
+              </p>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="text-white text-base block mb-2">Email address</label>
+            <label htmlFor="name" className="text-white text-base block mb-2">
+              Full Name
+            </label>
             <input
-              id="email"
-              type="email"
+              id="name"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="w-full bg-[#2b2f33] border-none rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="text-white text-base block mb-2">Password</label>
+            <label htmlFor="email" className="text-white text-base block mb-2">
+              Email address
+              {selectedRole === "admin" && (
+                <span className="text-yellow-400 text-xs ml-2">(Must be authorized)</span>
+              )}
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                // Clear error when email changes
+                if (error && error.includes("authorized")) {
+                  setError("");
+                }
+              }}
+              className="w-full bg-[#2b2f33] border-none rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="text-white text-base block mb-2">
+              Password
+            </label>
             <input
               id="password"
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-[#2b2f33] border-none rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="confirmPassword"
+              className="text-white text-base block mb-2"
+            >
+              Confirm Password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full bg-[#2b2f33] border-none rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
             />
           </div>
@@ -181,9 +260,9 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="w-full bg-[#FF4D4D] hover:bg-[#ff6666] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg text-base font-medium transition-colors" 
+            className="w-full bg-[#FF4D4D] hover:bg-[#ff6666] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg text-base font-medium transition-colors"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Creating account..." : "Register"}
           </button>
         </form>
 
@@ -220,15 +299,16 @@ export default function LoginPage() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            {googleLoading ? "Signing in..." : "Sign in with Google"}
+            {googleLoading ? "Signing in..." : "Sign up with Google"}
           </button>
         </div>
 
         <div className="mt-4 text-center">
-          <p className="text-[#FF4D4D] text-sm">Forgot Password? Contact us via email at<br />support@findmysquare.com</p>
           <div className="mt-4 bg-[#2b2f33] rounded-lg p-3">
-            <span className="text-gray-400">New user? </span>
-            <Link to="/register" className="text-[#FF4D4D]">Register</Link>
+            <span className="text-gray-400">Already have an account? </span>
+            <Link to="/login" className="text-[#FF4D4D]">
+              Sign In
+            </Link>
           </div>
         </div>
       </div>
