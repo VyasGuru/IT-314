@@ -1,0 +1,177 @@
+@startuml
+title Real Estate Listing Website
+
+actor User
+participant AuthService
+participant UserService
+participant Lister
+participant RegisteredUser
+participant Admin
+participant PropertyService
+participant ListingService
+participant NotificationService
+participant SearchService
+participant SavedListingService
+participant CompareListService
+participant ReviewService
+
+== Role Selection ==
+User -> AuthService: Choose Role (Lister / RegisteredUser / Admin)
+
+== Registration ==
+User -> AuthService: Register(name, email, password) / sign-in with google
+AuthService -> UserService: CheckEmailExists(email)
+UserService --> AuthService: exists/no
+alt Email exists
+    AuthService --> User: Show "Email Already Registered"
+else Email free
+    AuthService -> UserService: CreateUser()
+    UserService --> AuthService: success
+    AuthService --> User: Registration Successful
+end
+
+== Login ==
+User -> AuthService: Login(email, password) / log-in with google
+AuthService -> UserService: ValidateCredentials()
+alt Invalid Credentials
+    AuthService --> User: Show "Invalid Credentials"
+    return
+else Valid
+    AuthService --> User: Login Successful
+end
+
+== Lister Flow ==
+opt User selects Lister
+    User -> Lister: Switch to Lister Role
+
+    User -> Lister: Upload Property Details
+    Lister -> PropertyService: Validate Mandatory Fields
+    alt Missing Fields
+        PropertyService --> Lister: Error "Missing Required Fields"
+    else Valid
+        Lister -> PropertyService: CreateProperty()
+        PropertyService --> Lister: PropertyCreated
+
+        Lister -> ListingService: Create Listing (pending)
+        ListingService --> Lister: ListingCreated
+
+        Lister -> NotificationService: Notify "Listing Submitted"
+    end
+
+    opt Lister edits property
+        Lister -> PropertyService: UpdateProperty()
+        PropertyService --> Lister: Updated
+
+        Lister -> ListingService: Reset Listing to pending
+        ListingService --> Lister: StatusUpdated
+
+        Lister -> NotificationService: Notify "Listing Re-submitted"
+    end
+
+    opt Lister deletes property
+        Lister -> PropertyService: DeleteProperty()
+        PropertyService -> ListingService: DeleteAssociatedListing()
+        ListingService --> PropertyService: Deleted
+        PropertyService --> Lister: Deleted
+    end
+
+    opt Lister hide/unhide
+        Lister -> ListingService: ToggleVisibility()
+        ListingService --> Lister: VisibilityChanged
+        Lister -> NotificationService: Notify "Listing Visibility Updated"
+    end
+end
+
+== Admin Flow ==
+opt User selects Admin
+    User -> Admin: Switch to Admin Role
+
+    Admin -> ListingService: ViewPendingListings()
+    ListingService --> Admin: PendingList
+
+    Admin -> ListingService: OpenListing()
+
+    alt Approved
+        Admin -> ListingService: SetStatus(verified)
+        ListingService --> Admin: Done
+        Admin -> NotificationService: Notify "Listing Approved"
+    else Rejected
+        Admin -> ListingService: SetStatus(rejected)
+        ListingService --> Admin: Done
+        Admin -> NotificationService: Notify "Listing Rejected"
+    end
+
+    opt Admin deletes abusive/offensive comments
+        Admin -> ReviewService: DeleteOffensiveComment()
+        ReviewService --> Admin: Comment Removed
+    end
+
+    opt Admin sends manual notification
+        Admin -> NotificationService: SendCustomNotification()
+    end
+end
+
+== Registered User Flow ==
+opt User selects RegisteredUser
+    User -> RegisteredUser: Switch to RegisteredUser Role
+
+    RegisteredUser -> ListingService: View Listings
+    ListingService --> RegisteredUser: Listings
+
+    opt Search
+        RegisteredUser -> SearchService: Search(criteria)
+        SearchService --> RegisteredUser: Filtered Results
+    end
+
+    RegisteredUser -> ListingService: Open Listing
+    ListingService --> RegisteredUser: Listing Details
+
+    RegisteredUser -> ListingService: MarkViewed()
+
+    == Save Listing ==
+    opt Save Listing
+        RegisteredUser -> SavedListingService: SaveListing()
+        alt AlreadySaved
+            SavedListingService --> RegisteredUser: Error "Already Saved"
+        else Saved
+            SavedListingService --> RegisteredUser: Saved
+        end
+    end
+
+    opt Remove Saved Listing
+        RegisteredUser -> SavedListingService: RemoveSavedListing()
+        SavedListingService --> RegisteredUser: Removed
+    end
+
+    == Compare List ==
+    opt Add to Compare
+        RegisteredUser -> CompareListService: AddToCompare()
+        CompareListService --> RegisteredUser: Added
+
+        alt CompareList >= 2
+            RegisteredUser -> CompareListService: GetComparison()
+            CompareListService --> RegisteredUser: Comparison Data
+        else TooFew
+            note right of RegisteredUser
+                Show: "Add at least 2 listings"
+            end note
+        end
+    end
+
+    == Review ==
+    opt Leave Review
+        RegisteredUser -> ListingService: CheckViewed()
+        alt NotViewed
+            note right of RegisteredUser
+                Show: "View listing before reviewing"
+            end note
+        else Viewed
+            RegisteredUser -> ReviewService: CreateReview(rating, comment)
+            ReviewService -> PropertyService: AttachReview()
+            PropertyService --> ReviewService: Attached
+            ReviewService --> RegisteredUser: Review Submitted
+        end
+    end
+end
+
+@enduml
