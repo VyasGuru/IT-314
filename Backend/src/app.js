@@ -27,6 +27,7 @@ import router from "./routes/property.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import savedListingRoutes  from "./routes/savedListing.routes.js";
 import propertyComparisonRoutes from "./routes/propertyComparison.routes.js";
+import priceEstimatorRoutes from "./routes/priceEstimator.routes.js";
 
 
 //routes declaration
@@ -41,6 +42,7 @@ app.use("/api/properties", router);
 app.use("/api/saved-listings", savedListingRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/comparison", propertyComparisonRoutes);
+app.use("/api/estimator", priceEstimatorRoutes);
 
 
 //URL created like this after above statement
@@ -48,6 +50,7 @@ app.use("/api/comparison", propertyComparisonRoutes);
 //http://localhost:8000/api/saved-listings
 //http://localhost:8000/api/users
 //http://localhost:8000/api/comparison
+//http://localhost:8000/api/estimator
 
 
 // Export the Express app so it can be used in server.js or index.js

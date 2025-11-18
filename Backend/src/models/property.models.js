@@ -29,6 +29,11 @@ const locationSchema = new mongoose.Schema(
       required: true,
     },
 
+    locality: {
+      type: String,
+      required: true,
+    },
+
     city: {
       type: String,
       required: true,
