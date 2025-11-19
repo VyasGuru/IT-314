@@ -31,22 +31,24 @@ admin.initializeApp(
 
 
 
-// This is our simulated admin check
-const checkAdmin = (req, res, next) => {
-  console.log('Checking for admin role...');
-
-  // --- THIS IS NOT SECURE FOR PRODUCTION ---
-  // We are just checking for a "header" in the request.
-  if (req.headers['x-user-role'] === 'admin') {
-    console.log('Admin role confirmed!');
-    // The user is an admin! Continue to the next function (the controller).
-    next();
-  } else {
-    console.log('Access denied. Not an admin.');
-    // The user is NOT an admin. Send an error and stop.
-    res.status(403).json({ message: 'Access Denied: Admin role required.' });
+//admin check
+function checkAdmin(req, res, next) {
+  const auth = req.headers["authorization"] || "";
+  if (!auth.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Missing or invalid Authorization header" });
   }
-};
+
+  const token = auth.slice(7);
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.role !== "admin") return res.status(403).json({ message: "Admins only" });
+    req.user = payload;
+    next();
+  } catch (err) {
+    console.error("Auth error:", err.message);
+    return res.status(401).json({ message: "Invalid or expired token" });
+  }
+}
 
 
 const verifyFirebaseToken = asyncHandler(async (req, _, next) => {
