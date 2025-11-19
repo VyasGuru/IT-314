@@ -119,6 +119,7 @@ dist
 
 #firebase file
 src/db/firebaseServiceAccountKey.json
+serviceAccountkey.json
 
 # add package-lock.json
 package-lock.json

@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { getFilteredProperties
-         createProperty,
-         updatePropertyDetails,
-         deleteProperty,
-         updatePropertyStatus
-       } from "../controllers/property.controller.js";
+import {
+        getFilteredProperties,
+        createProperty,
+        updatePropertyDetails,
+        deleteProperty,
+        updatePropertyStatus,
+} from "../controllers/property.controller.js";
 
 import { verifyFirebaseToken, verifyLister } from "../middlewares/authMiddleware.js"; 
 

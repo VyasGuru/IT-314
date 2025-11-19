@@ -1,8 +1,8 @@
 // admin controllers
 
 import { classifyReviewWithLLM } from "./moderationService.js";
-import { Review } from "./models/Review.js";
-import { Admin } from "./models/Admin.js";
+import { Review } from "../models/review.models.js";
+import { Admin } from "../models/admin.models.js";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "replace_this_with_strong_secret";
