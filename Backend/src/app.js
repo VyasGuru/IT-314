@@ -29,6 +29,9 @@ import savedListingRoutes  from "./routes/savedListing.routes.js";
 import propertyComparisonRoutes from "./routes/propertyComparison.routes.js";
 import priceEstimatorRoutes from "./routes/priceEstimator.routes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import announcementRoutes from "./routes/announcement.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import listerVerificationRoutes from "./routes/listerVerification.routes.js";
 
 
 //routes declaration
@@ -45,6 +48,9 @@ app.use("/api/users", userRoutes);
 app.use("/api/comparison", propertyComparisonRoutes);
 app.use("/api/estimator", priceEstimatorRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/announcements", announcementRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/lister-verification", listerVerificationRoutes);
 
 
 //URL created like this after above statement

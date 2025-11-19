@@ -5,6 +5,20 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { Listing } from "../models/listing.models.js";
 import { Review } from "../models/review.models.js";
 import mongoose from "mongoose";
+import { createAdminNotification, createListerNotification } from "../services/notification.service.js";
+import { recordPropertyUpload, recordStatusChange } from "../services/stats.service.js";
+
+const mapListingStatusToStats = (status) => {
+    if (status === "verified" || status === "active") {
+        return "approved";
+    }
+
+    if (status === "rejected") {
+        return "rejected";
+    }
+
+    return "pending";
+};
 
 
 const getFilteredProperties = asyncHandler(async (req, res) => {
@@ -180,6 +194,26 @@ const createProperty = asyncHandler(async (req, res) => {
 
         // If both worked, commit the changes
         await session.commitTransaction();
+
+        await Promise.allSettled([
+            recordPropertyUpload({
+                propertyId: newProperty._id,
+                listerId: req.user?._id,
+                listerName: req.user?.name || req.user?.email,
+                title,
+            }),
+            createAdminNotification({
+                title: "New property upload",
+                message: `New property uploaded by ${req.user?.name || "Lister"}: \"${title}\"`,
+                type: "system",
+                metadata: {
+                    listerName: req.user?.name,
+                    listerId: req.user?._id,
+                    propertyTitle: title,
+                    propertyId: newProperty._id,
+                },
+            }),
+        ]);
 
         return res.status(201).json(
             new ApiResponse(201, { newProperty, newListing }, "Property and Listing created successfully")
@@ -394,10 +428,87 @@ const deleteProperty = asyncHandler(async (req, res) => {
 
 });
 
+const reviewPropertyStatus = asyncHandler(async (req, res) => {
+
+    const { propertyId } = req.params;
+    const { status, message } = req.body;
+
+    const allowedStatuses = ["approved", "rejected", "pending"];
+
+    if (!allowedStatuses.includes(status)) {
+        throw new ApiError(400, "Invalid status. Use: approved, rejected, or pending");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(propertyId)) {
+        throw new ApiError(400, "Invalid property id");
+    }
+
+    const property = await Property.findById(propertyId);
+    if (!property) {
+        throw new ApiError(404, "Property not found");
+    }
+
+    const listing = await Listing.findOne({ propertyId: property._id });
+    if (!listing) {
+        throw new ApiError(404, "Listing for this property not found");
+    }
+
+    const previousStatsStatus = mapListingStatusToStats(listing.status);
+
+    const statusMap = {
+        approved: "verified",
+        rejected: "rejected",
+        pending: "pending",
+    };
+
+    listing.status = statusMap[status];
+
+    if (status === "approved") {
+        listing.verifiedAt = new Date();
+        listing.verifiedByAdminUid = req.user?._id;
+        listing.rejectionReason = undefined;
+    } else if (status === "rejected") {
+        listing.verifiedAt = undefined;
+        listing.verifiedByAdminUid = req.user?._id;
+        listing.rejectionReason = message || "Rejected by admin";
+    } else {
+        listing.verifiedAt = undefined;
+        listing.rejectionReason = undefined;
+    }
+
+    const updatedListing = await listing.save();
+
+    await Promise.allSettled([
+        recordStatusChange({
+            propertyId: property._id,
+            oldStatus: previousStatsStatus,
+            newStatus: status,
+        }),
+        createListerNotification({
+            toUser: listing.listerFirebaseUid,
+            title: `Property ${status}`,
+            message:
+                message ||
+                `Your property "${property.title}" has been ${status} by ${req.user?.name || "an admin"}`,
+            type: "listing_update",
+            metadata: {
+                propertyId: property._id,
+                propertyStatus: status,
+                reviewedBy: req.user?._id,
+            },
+        }),
+    ]);
+
+    return res.status(200).json(
+        new ApiResponse(200, { property, listing: updatedListing }, `Property ${status}`)
+    );
+});
+
 export {
     getFilteredProperties,
     createProperty,
     updatePropertyDetails,
     updatePropertyStatus,
     deleteProperty,
+    reviewPropertyStatus,
 }
