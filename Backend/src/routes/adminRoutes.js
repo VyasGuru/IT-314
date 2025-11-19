@@ -7,7 +7,9 @@ import {
 } from "../controllers/adminController.js";
 import { registerAdmin, loginAdmin } from "../controllers/adminController.js";
 
-import { checkAdmin } from "../middlewares/authMiddleware.js";
+import { checkAdmin, verifyFirebaseToken, verifyAdmin } from "../middlewares/authMiddleware.js";
+import { reviewPropertyStatus } from "../controllers/property.controller.js";
+import { getDailyReport, resetDailyReport } from "../controllers/report.controller.js";
 
 const router = express.Router();
 
@@ -18,5 +20,26 @@ router.post("/login", loginAdmin);
 router.get("/reviews", checkAdmin, listReviews);
 router.delete("/reviews/:id", checkAdmin, deleteReviewById);
 router.delete("/reviews", checkAdmin, deleteAllAbusive);
+
+router.patch(
+  "/properties/:propertyId/status",
+  verifyFirebaseToken,
+  verifyAdmin,
+  reviewPropertyStatus
+);
+
+router.get(
+  "/reports/daily-summary",
+  verifyFirebaseToken,
+  verifyAdmin,
+  getDailyReport
+);
+
+router.post(
+  "/reports/daily-summary/reset",
+  verifyFirebaseToken,
+  verifyAdmin,
+  resetDailyReport
+);
 
 export default router;

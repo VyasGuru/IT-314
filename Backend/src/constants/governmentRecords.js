@@ -1,0 +1,42 @@
+export const DEFAULT_GOVERNMENT_RECORDS = [
+  {
+    name: "Raj Kumar",
+    aadhaar: "123456789012",
+    pan: "AAAPA5055K",
+    dob: "1985-04-12",
+    address: "11 Residency Road, Bengaluru",
+    phoneNumber: "9876543210",
+  },
+  {
+    name: "Priya Singh",
+    aadhaar: "987654321098",
+    pan: "BBABB2050M",
+    dob: "1990-08-21",
+    address: "55 Civil Lines, Lucknow",
+    phoneNumber: "9123456780",
+  },
+  {
+    name: "Arjun Patel",
+    aadhaar: "456789123456",
+    pan: "CCAPC1234F",
+    dob: "1987-01-30",
+    address: "19 CG Road, Ahmedabad",
+    phoneNumber: "9988776655",
+  },
+  {
+    name: "Neha Sharma",
+    aadhaar: "789123456789",
+    pan: "DDADS5678G",
+    dob: "1993-09-14",
+    address: "203 Bandra West, Mumbai",
+    phoneNumber: "9090909090",
+  },
+  {
+    name: "Vikram Gupta",
+    aadhaar: "321654987321",
+    pan: "EEAEG9012H",
+    dob: "1982-07-05",
+    address: "44 Park Street, Kolkata",
+    phoneNumber: "9012345678",
+  },
+];
