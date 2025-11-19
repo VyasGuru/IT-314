@@ -4,10 +4,10 @@ import {
   listReviews,
   deleteReviewById,
   deleteAllAbusive
-} from "./adminController.js";
-import { registerAdmin, loginAdmin } from "./adminController.js";
+} from "../controllers/adminController.js";
+import { registerAdmin, loginAdmin } from "../controllers/adminController.js";
 
-import { checkAdmin } from "./authMiddleware.js";
+import { checkAdmin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
