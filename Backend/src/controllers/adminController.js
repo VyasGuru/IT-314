@@ -1,84 +1,128 @@
-// controllers/adminController.js
+// admin controllers
 
-// --- MOCK DATABASE ---
-// This is a simple array to act as our database for now.
-let mockReviews = [
-  {
-    _id: '111',
-    text: 'This place was okay. Just average.',
-  },
-  {
-    _id: '222',
-    text: 'I hated it, it was really bad.',
-  },
-  {
-    _id: '333',
-    text: 'This is an AWFUL and STUPID place. Total garbage.',
-  },
-  {
-    _id: '444',
-    text: 'I loved it!',
-  },
-  {
-    _id: '555',
-    text: 'The owner is a moron and a total jerk.',
-  },
-];
+import { classifyReviewWithLLM } from "./moderationService.js";
+import { Review } from "./models/Review.js";
+import { Admin } from "./models/Admin.js";
+import jwt from "jsonwebtoken";
 
-// --- OUR "BAD WORD" LIST ---
-// We will delete any review that contains these words.
-const abusiveWordList = ['awful', 'stupid', 'garbage', 'moron', 'jerk'];
+const JWT_SECRET = process.env.JWT_SECRET || "replace_this_with_strong_secret";
 
-/**
- * @desc    Clean up all abusive reviews (as an Admin)
- * @route   POST /api/admin/cleanup
- * @access  Admin
- */
-const cleanupAbusiveReviews = (req, res) => {
+// register new admin
+export async function registerAdmin(req, res) {
   try {
-    console.log('--- Running Cleanup ---');
-    console.log('Original reviews count:', mockReviews.length);
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ message: "username and password required" });
 
-    const deletedReviewIds = [];
+    const existing = await Admin.findOne({ username });
+    if (existing) return res.status(400).json({ message: "Admin already exists" });
 
-    // We use .filter() to create a NEW array that
-    // only contains the reviews we want to KEEP.
-    const cleanedReviews = mockReviews.filter((review) => {
-      // Convert review text to lowercase to make checking easier
-      const reviewText = review.text.toLowerCase();
+    const admin = new Admin({ username, password });
+    await admin.save();
 
-      // We use .some() to check if *any* word from our abusive list
-      // is .includes() in the review's text.
-      const isAbusive = abusiveWordList.some((badWord) =>
-        reviewText.includes(badWord)
-      );
+    res.status(201).json({ message: "Admin created", admin: { id: admin._id, username: admin.username } });
+  } catch (err) {
+    console.error("Error registering admin:", err);
+    res.status(500).json({ message: "Error registering admin", error: err.message });
+  }
+}
 
-      // If it IS abusive...
-      if (isAbusive) {
-        console.log(`FLAGGED: Review ${review._id} ("${review.text}")`);
-        deletedReviewIds.push(review._id);
-        return false; // ...do NOT keep it (it gets deleted)
-      }
+// login admin and issue token
+export async function loginAdmin(req, res) {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ message: "username and password required" });
 
-      // If it is NOT abusive...
-      return true; // ...KEEP it in the new array
+    const admin = await Admin.findOne({ username });
+    if (!admin) return res.status(401).json({ message: "Invalid credentials" });
+
+    const match = await admin.comparePassword(password);
+    if (!match) return res.status(401).json({ message: "Invalid credentials" });
+
+    const token = jwt.sign({ id: admin._id, role: admin.role, username: admin.username }, JWT_SECRET, { expiresIn: "2h" });
+
+    res.json({ message: "Authenticated", token });
+  } catch (err) {
+    console.error("Error logging in admin:", err);
+    res.status(500).json({ message: "Error logging in", error: err.message });
+  }
+}
+
+// classify a review and store it
+export async function classifySingleReview(req, res) {
+  try {
+    const { comment, targetType, targetId, reviewerFirebaseUid, rating } = req.body;
+
+    // basic validation
+    if (!comment) return res.status(400).json({ message: "Comment required" });
+    if (!targetType || !targetId || !reviewerFirebaseUid) {
+      return res.status(400).json({ message: "targetType, targetId, reviewerFirebaseUid required" });
+    }
+
+    // call moderation check
+    const result = await classifyReviewWithLLM(comment);
+
+    // persist review
+    const newReview = new Review({
+      comment,
+      targetType,
+      targetId,
+      reviewerFirebaseUid,
+      rating: rating || 5,
+      isAbusive: result.isAbusive
     });
 
-    // Now, we replace our old database with the new, clean array
-    mockReviews = cleanedReviews;
+    await newReview.save();
 
-    console.log('Cleanup complete. New reviews count:', mockReviews.length);
-
-    // Send a success response
-    res.status(200).json({
-      message: 'Cleanup successful.',
-      reviewsDeleted: deletedReviewIds.length,
-      deletedIds: deletedReviewIds,
+    res.status(201).json({
+      message: "Review saved",
+      review: newReview,
+      moderation: result
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server Error' });
+    console.error("Error classifying review:", error);
+    res.status(500).json({ message: "Error processing review", error: error.message });
   }
-};
+}
 
-export { cleanupAbusiveReviews };
+// list reviews
+export async function listReviews(req, res) {
+  try {
+    const reviews = await Review.find();
+    res.json({ count: reviews.length, reviews });
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+    res.status(500).json({ message: "Error fetching reviews", error: error.message });
+  }
+}
+
+// delete one review
+export async function deleteReviewById(req, res) {
+  try {
+    const { id } = req.params;
+    const result = await Review.findByIdAndDelete(id);
+
+    if (!result) {
+      return res.status(404).json({ message: "Review not found" });
+    }
+
+    res.json({ message: "Review deleted", id });
+  } catch (error) {
+    console.error("Error deleting review:", error);
+    res.status(500).json({ message: "Error deleting review", error: error.message });
+  }
+}
+
+//  abusive reviews
+export async function deleteAllAbusive(req, res) {
+  try {
+    const result = await Review.deleteMany({ isAbusive: true });
+
+    res.json({
+      message: "Abusive reviews deleted",
+      deleted: result.deletedCount
+    });
+  } catch (error) {
+    console.error("Error deleting abusive reviews:", error);
+    res.status(500).json({ message: "Error deleting reviews", error: error.message });
+  }
+}
