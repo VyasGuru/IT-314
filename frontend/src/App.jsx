@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 
 // Import components used across all pages
@@ -11,6 +11,12 @@ import AboutPage from "./components/about_page/AboutPage";
 import ContactPage from "./components/contact_page/ContactPage";
 import LoginPage from "./components/login_page/LoginPage";
 import RegisterPage from "./components/login_page/RegisterPage";
+import UserDashboard from "./components/user_dashboard/UserDashboard";
+import PropertiesPage from "./components/properties_page/PropertiesPage";
+import ServicesPage from "./components/services_page/ServicesPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+import AdminDashboard from "./components/admin_dashboard/AdminDashboard";
+import AdminRoute from "./components/AdminRoute";
 
 // Import components specific to the Landing Page
 import { Hero } from "./components/landing_page/Hero";
@@ -141,37 +147,90 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background">
       <Routes>
-        <Route path="/" element={
-          <>
-            <Header user={user} />
-            <LandingPage />
-            <Footer />
-          </>
-        } />
-        <Route path="/about" element={
-          <>
-            <Header user={user} />
-            <AboutPage />
-            <Footer />
-          </>
-        } />
-        <Route path="/login" element={
-          <div className="min-h-screen bg-white flex items-center justify-center">
-            <LoginPage />
-          </div>
-        } />
-        <Route path="/register" element={
-          <div className="min-h-screen bg-white flex items-center justify-center">
-            <RegisterPage />
-          </div>
-        } />
-        <Route path="/contact" element={
-          <>
-            <Header user={user} />
-            <ContactPage />
-            <Footer />
-          </>
-        } />
+        <Route
+          path="/"
+          element={
+            <>
+              <Header user={user} />
+              <LandingPage />
+              <Footer />
+            </>
+          }
+        />
+        <Route
+          path="/about"
+          element={
+            <>
+              <Header user={user} />
+              <AboutPage />
+              <Footer />
+            </>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <div className="min-h-screen bg-white flex items-center justify-center">
+              <LoginPage />
+            </div>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <div className="min-h-screen bg-white flex items-center justify-center">
+              <RegisterPage />
+            </div>
+          }
+        />
+        <Route
+          path="/contact"
+          element={
+            <>
+              <Header user={user} />
+              <ContactPage />
+              <Footer />
+            </>
+          }
+        />
+        <Route
+          path="/properties"
+          element={
+            <>
+              <Header user={user} />
+              <PropertiesPage />
+              <Footer />
+            </>
+          }
+        />
+        <Route
+          path="/services"
+          element={
+            <>
+              <Header user={user} />
+              <ServicesPage />
+              <Footer />
+            </>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Header user={user} />
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <Header user={user} />
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
       </Routes>
     </div>
   );

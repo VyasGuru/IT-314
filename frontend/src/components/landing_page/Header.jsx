@@ -23,6 +23,16 @@ export function Header({ user }) {
     }
   };
 
+  const handleProfileClick = () => {
+    if (user) {
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  };
+
   return (
     <header className="border-b bg-gray-50/95 backdrop-blur sticky top-0 z-50">
       {/* Top bar */}
@@ -42,19 +52,29 @@ export function Header({ user }) {
             <div className="hidden md:flex items-center gap-4">
               {user ? (
                 <div className="flex items-center gap-3">
-                  {user.picture && (
-                    <img
-                      src={user.picture}
-                      alt={user.name}
-                      className="w-8 h-8 rounded-full"
-                    />
-                  )}
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{user.name || user.email}</span>
-                    {user.role && (
-                      <span className="text-xs text-gray-500 capitalize">{user.role}</span>
+                  <button
+                    onClick={handleProfileClick}
+                    className="flex items-center gap-3 hover:bg-gray-200/60 rounded-full px-2 py-1 transition-colors"
+                    title="View Dashboard"
+                  >
+                    {user.picture && (
+                      <img
+                        src={user.picture}
+                        alt={user.name}
+                        className="w-8 h-8 rounded-full"
+                      />
                     )}
-                  </div>
+                    <div className="flex flex-col items-start">
+                      <span className="text-sm font-medium">
+                        {user.name || user.email}
+                      </span>
+                      {user.role && (
+                        <span className="text-xs text-gray-500 capitalize">
+                          {user.role}
+                        </span>
+                      )}
+                    </div>
+                  </button>
                   <button
                     onClick={handleSignOut}
                     className="flex items-center gap-1 text-gray-600 hover:text-red-600 transition-colors"

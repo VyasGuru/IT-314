@@ -4,6 +4,7 @@
 export const ALLOWED_ADMIN_EMAILS = [
   "sanu10746@gmail.com",
   "snehshah0316@gmail.com",
+  "khush2236@gmail.com",
   // Add your second admin email here
   // Example: "admin2@findmysquare.com",
 ];
