@@ -24,7 +24,8 @@ router.route("/create").post(
 
 router.route("/update-details/:propertyId").patch(
     verifyFirebaseToken, 
-    verifyLister, 
+    verifyLister,
+    upload.array("images", 10), 
     updatePropertyDetails
 );
 
