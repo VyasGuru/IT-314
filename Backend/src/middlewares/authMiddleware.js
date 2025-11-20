@@ -1,11 +1,10 @@
 // middleware/authMiddleware.js
 
-import fs from "fs";
-import path from "path";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import admin from "firebase-admin";
 import { User } from "../models/user.models.js";
+import jwt from "jsonwebtoken";
 
 //admin configration
 
@@ -24,11 +23,13 @@ const serviceAccount = {
 };
 
 
-admin.initializeApp(
-    {
-        credential: admin.credential.cert(serviceAccount),
-    }
-);
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || "replace_this_with_strong_secret";
 
 
 
@@ -46,6 +47,9 @@ const verifyFirebaseToken = asyncHandler(async (req, _, next) => {
     const decoded = await admin.auth().verifyIdToken(token);
 
     const user = await User.findOne({ firebaseUid: decoded.uid });
+    if (!user) {
+      throw new ApiError(404, "User not found for the provided token");
+    }
     req.user = user;
     next();
   } catch (err) {
@@ -54,18 +58,58 @@ const verifyFirebaseToken = asyncHandler(async (req, _, next) => {
 });
 
 const verifyLister = asyncHandler(async (req, _, next) => {
-   
-    const userRole = req.user.role;
+  const userRole = req.user?.role;
 
-    if (userRole !== 'lister') {
-        throw new ApiError(403, "Access Denied: You must be a 'lister' to perform this action.");
-    }
+  if (userRole !== "lister") {
+    throw new ApiError(
+      403,
+      "Access Denied: You must be a 'lister' to perform this action."
+    );
+  }
 
-    next(); 
+  next();
 });
+
+const verifyAdmin = asyncHandler(async (req, _, next) => {
+  const userRole = req.user?.role;
+
+  if (userRole !== "admin") {
+    throw new ApiError(
+      403,
+      "Access Denied: You must be an 'admin' to perform this action."
+    );
+  }
+
+  next();
+});
+
+const checkAdmin = (req, res, next) => {
+  const auth = req.headers["authorization"] || "";
+
+  if (!auth.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ message: "Missing or invalid Authorization header" });
+  }
+
+  const token = auth.slice(7);
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.role !== "admin") {
+      return res.status(403).json({ message: "Admins only" });
+    }
+    req.admin = payload;
+    next();
+  } catch (err) {
+    console.error("Admin auth error:", err.message);
+    return res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
 
 export { 
     checkAdmin, 
     verifyFirebaseToken, 
-    verifyLister 
+    verifyLister,
+    verifyAdmin
 };

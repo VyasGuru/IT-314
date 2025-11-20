@@ -1,10 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Menu, Phone, Mail, LogOut } from "lucide-react";
+import { Search, Menu, Phone, Mail, LogOut, GitCompare } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useComparison } from "../../contexts/ComparisonContext";
 
 export function Header({ user }) {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const { properties: comparedProperties } = useComparison();
 
   const navLinks = [
     { name: "Home", path: "/" },
@@ -12,7 +14,9 @@ export function Header({ user }) {
     { name: "About", path: "/about" },
     { name: "Services", path: "/services" },
     { name: "Contact", path: "/contact" },
+    { name: "Compare", path: "/compare" },
   ];
+  const comparisonCount = comparedProperties.length;
 
   const handleSignOut = async () => {
     try {
@@ -130,6 +134,18 @@ export function Header({ user }) {
                 className="border-0 bg-transparent p-0 w-full focus:outline-none focus:ring-0"
               />
             </div>
+            <Link
+              to="/compare"
+              className="hidden md:flex items-center gap-2 border border-gray-200 px-3 py-2 rounded-lg hover:bg-white transition-colors"
+            >
+              <GitCompare className="h-4 w-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">Compare</span>
+              {comparisonCount > 0 && (
+                <span className="ml-1 text-xs font-semibold text-white bg-blue-600 rounded-full px-2 py-0.5">
+                  {comparisonCount}
+                </span>
+              )}
+            </Link>
             <button className="border px-2 py-1 rounded lg:hidden hover:bg-gray-200">
               <Menu className="h-4 w-4" />
             </button>

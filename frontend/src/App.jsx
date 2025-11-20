@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Import components used across all pages
 import { Header } from "./components/landing_page/Header";
@@ -18,6 +19,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminDashboard from "./components/admin_dashboard/AdminDashboard";
 import AdminRoute from "./components/AdminRoute";
 import LandingPage from "./components/landing_page/LandingPage";
+import PropertyComparisonPage from "./components/comparison_page/PropertyComparisonPage";
 
 // 3. Update the main App component to be a router
 export default function App() {
@@ -35,6 +37,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background">
+      <ScrollToTop />
       <Routes>
         <Route
           path="/"
@@ -106,6 +109,16 @@ export default function App() {
             <>
               <Header user={user} />
               <ServicesPage />
+              <Footer />
+            </>
+          }
+        />
+        <Route
+          path="/compare"
+          element={
+            <>
+              <Header user={user} />
+              <PropertyComparisonPage />
               <Footer />
             </>
           }

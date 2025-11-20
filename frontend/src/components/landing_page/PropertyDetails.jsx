@@ -1,14 +1,44 @@
-import { useState } from "react";
-import { X, MapPin, Bed, Bath, Square, Calendar, Heart, Share, Phone, Mail } from "lucide-react";
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { X, MapPin, Bed, Bath, Square, Calendar, Heart, Share, Phone, Mail, GitCompare } from "lucide-react";
 import { formatLocation } from "../../utils/formatLocation";
+import { useComparison } from "../../contexts/ComparisonContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function PropertyDetails({ property, isOpen, onClose }) {
   const [liked, setLiked] = useState(false);
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const { properties: comparedProperties, addProperty, removeProperty, updatingId } = useComparison();
 
   if (!property || !isOpen) return null;
   
   // Format location if it's an object
   const locationString = formatLocation(property.location);
+  const propertyId = property._id || property.id;
+  const isCompared = useMemo(
+    () => comparedProperties.some((item) => (item._id || item.id) === propertyId),
+    [comparedProperties, propertyId]
+  );
+  const isUpdating = updatingId === propertyId;
+
+  const handleComparisonToggle = async () => {
+    if (!propertyId) return;
+    if (!currentUser) {
+      navigate("/login");
+      return;
+    }
+    try {
+      if (isCompared) {
+        await removeProperty(propertyId);
+      } else {
+        await addProperty(property);
+      }
+    } catch (err) {
+      console.error("Comparison error:", err);
+      alert(err?.response?.data?.message || "Unable to update comparison right now.");
+    }
+  };
 
   const getStatusBadge = () => {
     switch (property.status) {
@@ -56,12 +86,24 @@ export function PropertyDetails({ property, isOpen, onClose }) {
         </div>
 
         {/* Price and Actions */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
           <div>
             <p className="text-3xl font-bold text-blue-600">{property.price}</p>
             <p className="text-gray-500">{property.propertyType}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleComparisonToggle}
+              disabled={isUpdating}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isCompared
+                  ? "bg-green-600 text-white hover:bg-green-700"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              <GitCompare className="h-4 w-4" />
+              {isCompared ? "In Compare" : "Add to Compare"}
+            </button>
             <button
               onClick={() => setLiked(!liked)}
               className={`p-2 rounded-full border ${liked ? "border-red-500 text-red-500" : "border-gray-300 text-gray-500"}`}
@@ -88,12 +130,14 @@ export function PropertyDetails({ property, isOpen, onClose }) {
           </div>
           <div className="p-4 border rounded-lg">
             <Square className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-            <p className="font-semibold">{property.area}</p>
+            <p className="font-semibold">
+              {property.area || (property.size ? `${property.size} sq ft` : "N/A")}
+            </p>
             <p className="text-sm text-gray-500">Area</p>
           </div>
           <div className="p-4 border rounded-lg">
             <Calendar className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-            <p className="font-semibold">{property.yearBuilt}</p>
+            <p className="font-semibold">{property.yearBuilt || property.yearBuild || "N/A"}</p>
             <p className="text-sm text-gray-500">Year Built</p>
           </div>
         </div>
