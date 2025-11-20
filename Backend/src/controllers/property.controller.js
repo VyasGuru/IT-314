@@ -22,7 +22,6 @@ const mapListingStatusToStats = (status) => {
 
 
 const getFilteredProperties = asyncHandler(async (req, res) => {
-
     try {
         const { minPrice, maxPrice, location, minSize, maxSize, bedrooms, bathrooms, propertyType, year_built, amenities } = req.query;
 
@@ -31,51 +30,60 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
 
         // Add filters dynamically
         if (location) {
-            filter["location.city"] = {     //regex used for find pattern, options = i , for case in sensetive
-                $regex: location, 
+            filter["location.city"] = {
+                $regex: location,
                 $options: "i",
-            }; 
+            };
         }
 
         if (minPrice || maxPrice) {
             filter.price = {};
-            if (minPrice){
-                filter.price.$gte = Number(minPrice); //gte = greater than equal to
+            if (minPrice) {
+                filter.price.$gte = Number(minPrice);
             }
-            if (maxPrice){
-                filter.price.$lte = Number(maxPrice); //lte = less than equal to
+            if (maxPrice) {
+                filter.price.$lte = Number(maxPrice);
             }
         }
 
         if (minSize || maxSize) {
             filter.size = {};
-            if (minSize){
-                filter.size.$gte = Number(minSize); //convert minSize into number
-            } 
+            if (minSize) {
+                filter.size.$gte = Number(minSize);
+            }
             if (maxSize) {
                 filter.size.$lte = Number(maxSize);
             }
         }
 
-        if (bedrooms){
+        if (bedrooms) {
             filter.bedrooms = Number(bedrooms);
-        } 
-
-        if (bathrooms){
-            filter.bathrooms = Number(bathrooms);
-        }   
-
-        if(propertyType){
-            filter.propertyType = propertyType;
         }
 
-        if(year_built){
+        if (bathrooms) {
+            filter.bathrooms = Number(bathrooms);
+        }
+
+        if (propertyType) {
+            const typeMapping = {
+                "House": "residential",
+                "Apartment": "residential",
+                "Villa": "residential",
+                "Commercial": "commercial",
+                "Land": "land",
+            };
+            const backendType = typeMapping[propertyType];
+            if (backendType) {
+                filter.propertyType = backendType;
+            }
+        }
+
+        if (year_built) {
             filter.yearBuild = {};
             filter.yearBuild.$lte = Number(year_built);
         }
 
         if (amenities) {
-            // List of valid amenity
             const validAmenities = [
                 "parking",
                 "gym",
@@ -89,42 +97,27 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
                 "playArea",
                 "furnished",
             ];
-
-            // Convert amenities string (e.g., "wifi,gym") into an array
             const selectedAmenities = amenities.split(",").map((a) => a.trim());
-
-            // Filter out valid ones
             const validSelected = selectedAmenities.filter((a) =>
                 validAmenities.includes(a)
             );
-
-            // write logiv for or operator, means any one of amenities present then display
             if (validSelected.length > 0) {
-                filter.$or = validSelected.map((a) => (
-                    {
-                        [`amenities.${a}`]: true,
-                    }
-                ));
+                filter.$or = validSelected.map((a) => ({
+                    [`amenities.${a}`]: true,
+                }));
             }
         }
 
-        // Fetch filtered properties
         const properties = await Property.find(filter);
 
-        if (properties.length === 0) {
-            throw new ApiError(404, "No properties found")
-        }
-
         return res.status(200).json(
-            new ApiResponse(200, properties, "Property search Succesfully")
+            new ApiResponse(200, properties, "Property search successfully")
         );
 
+    } catch (error) {
+        console.error("Error in getFilteredProperties:", error);
+        throw new ApiError(500, "Internal Server Error while fetching properties: " + error.message);
     }
-
-    catch (error) {
-        throw new ApiError(500, error.message)
-    }
-
 });
 
 // CREATE PROPERTY FUNCTION OF A LISTER
@@ -186,7 +179,7 @@ const createProperty = asyncHandler(async (req, res) => {
         // Create the Listing
         const newListing = new Listing({
             propertyId: newProperty._id, 
-            listerFirebaseUid: req.user._id, 
+            listerFirebaseUid: req.user.firebaseUid, 
             status: "pending"            
         });
 
@@ -256,7 +249,7 @@ const updatePropertyDetails = asyncHandler(async (req, res) => {
 
 
     // Security Check: Is the user the owner?
-    if (listing.listerFirebaseUid.toString() !== req.user._id.toString()) {
+    if (listing.listerFirebaseUid.toString() !== req.user.firebaseUid.toString()) {
         throw new ApiError(403, "You do not have permission to edit this property"); 
     }
 
@@ -371,7 +364,7 @@ const updatePropertyStatus = asyncHandler(async (req, res) => {
 
 
     // Security Check: Is the logged-in user the real owner?
-    if (listing.listerFirebaseUid.toString() !== req.user._id.toString()) {
+    if (listing.listerFirebaseUid.toString() !== req.user.firebaseUid.toString()) {
         throw new ApiError(403, "You can't change this property's status");
     }
 
@@ -400,7 +393,7 @@ const deleteProperty = asyncHandler(async (req, res) => {
     if (!listing) throw new ApiError(404, "Listing for this property not found");
 
     // Security Check
-    if (listing.listerFirebaseUid.toString() !== req.user._id.toString()) {
+    if (listing.listerFirebaseUid.toString() !== req.user.firebaseUid) {
         throw new ApiError(403, "You can't delete this property");
     }
 
@@ -411,10 +404,9 @@ const deleteProperty = asyncHandler(async (req, res) => {
     }
 
     //  Delete Reviews 
-    const propertyIdString = property._id.toString();
     
     await Review.deleteMany({ 
-        target_id: propertyIdString,
+        target_id: propertyId,
         target_type: "property" 
     });
 

@@ -8,6 +8,7 @@ import {
     getProfile,
     resetPassword,
     forgetPassword,
+    updateUserDetails,
 } from "../controllers/user.controller.js";
 
 import { verifyFirebaseToken } from "../middlewares/authMiddleware.js";
@@ -22,5 +23,6 @@ router.post("/logout", verifyFirebaseToken, logoutUser);
 router.get("/profile", verifyFirebaseToken, getProfile);
 router.post("/reset-password", verifyFirebaseToken, resetPassword);
 router.post("/forgot-password", forgetPassword);
+router.patch("/update", verifyFirebaseToken, updateUserDetails);
 
 export default router;

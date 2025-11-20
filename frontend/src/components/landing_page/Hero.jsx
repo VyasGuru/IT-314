@@ -1,6 +1,15 @@
+import { useState } from "react";
 import { Search, MapPin, Home, DollarSign } from "lucide-react";
 
-export function Hero() {
+export function Hero({ onSearch }) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [propertyType, setPropertyType] = useState("");
+  const [priceRange, setPriceRange] = useState("");
+
+  const handleSearch = () => {
+    onSearch({ searchTerm, propertyType, priceRange });
+  };
+
   return (
     <section className="relative bg-gradient-to-r from-blue-50 via-white to-blue-50 py-20">
       <div className="container mx-auto px-4">
@@ -9,9 +18,9 @@ export function Hero() {
           <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
             Find Your Dream Home
           </h1>
-          <p className="text-xl texgit --version
-600 max-w-2xl mx-auto">
-            Discover the perfect property with our extensive collection of homes, apartments, and commercial spaces
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Discover the perfect property with our extensive collection of
+            homes, apartments, and commercial spaces
           </p>
         </div>
 
@@ -25,21 +34,36 @@ export function Hero() {
                 type="text"
                 placeholder="Enter location"
                 className="pl-10 pr-3 py-2 w-full border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
               />
             </div>
 
             {/* Property Type */}
-            <select className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full">
+            <select
+              className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
+              value={propertyType}
+              onChange={(e) => setPropertyType(e.target.value)}
+            >
               <option value="">Property Type</option>
-              <option value="house">House</option>
-              <option value="apartment">Apartment</option>
-              <option value="villa">Villa</option>
-              <option value="commercial">Commercial</option>
-              <option value="land">Land</option>
+              <option value="House">House</option>
+              <option value="Apartment">Apartment</option>
+              <option value="Villa">Villa</option>
+              <option value="Commercial">Commercial</option>
+              <option value="Land">Land</option>
             </select>
 
             {/* Price Range */}
-            <select className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full">
+            <select
+              className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full"
+              value={priceRange}
+              onChange={(e) => setPriceRange(e.target.value)}
+            >
               <option value="">Price Range</option>
               <option value="0-100k">₹0 - ₹100k</option>
               <option value="100k-300k">₹100k - ₹300k</option>
@@ -49,7 +73,10 @@ export function Hero() {
             </select>
 
             {/* Search Button */}
-            <button className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors px-4 py-2">
+            <button
+              onClick={handleSearch}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors px-4 py-2"
+            >
               <Search className="h-4 w-4" />
               Search Properties
             </button>

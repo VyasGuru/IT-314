@@ -1,5 +1,6 @@
 import { MapPin, Bed, Bath, Square, Heart, Eye } from "lucide-react";
 import { useState } from "react";
+import { formatLocation } from "../../utils/formatLocation";
 
 export function PropertyCard({ 
   id, 
@@ -15,6 +16,9 @@ export function PropertyCard({
   onViewDetails 
 }) {
   const [liked, setLiked] = useState(false);
+  
+  // Format location if it's an object
+  const locationString = formatLocation(location);
 
   const getStatusBadge = () => {
     switch (status) {
@@ -81,7 +85,7 @@ export function PropertyCard({
           </h3>
           <div className="flex items-center text-gray-500 mb-2">
             <MapPin className="h-4 w-4 mr-1" />
-            <span className="text-sm">{location}</span>
+            <span className="text-sm">{locationString}</span>
           </div>
           <p className="text-2xl font-bold text-blue-600">{price}</p>
         </div>

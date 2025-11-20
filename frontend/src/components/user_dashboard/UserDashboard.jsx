@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../landing_page/Header';
+import { getUserProfile } from '../../services/userApi';
+import { getSavedListings } from '../../services/savedListingApi';
+import { getComparedProperties } from '../../services/comparisonApi';
+import { getProperties } from '../../services/propertyApi';
+import { formatLocation } from '../../utils/formatLocation';
 import {
   User,
   Heart,
@@ -127,109 +132,135 @@ const UserDashboard = () => {
   const fetchUserData = async () => {
     try {
       setLoading(true);
-      setUserData({
-        displayName: currentUser?.displayName || 'User',
-        email: currentUser?.email || '',
-        photoURL: currentUser?.photoURL || '',
-        phone: '+91 9876543210',
-        joinedDate: '2024-01-15',
-        verified: true
-      });
-
-      setSavedProperties([
-        {
-          id: 1,
-          title: 'Modern Beachfront Condo',
-          price: '₹850,000',
-          location: 'Mumbai, MH',
-          image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
-          bedrooms: 3,
-          bathrooms: 2,
-          area: '1,500 sq ft',
-          savedDate: '2024-11-10'
-        },
-        {
-          id: 2,
-          title: 'Downtown Luxury Apartment',
-          price: '₹3,200/month',
-          location: 'Ahmedabad, GJ',
-          image: 'https://images.unsplash.com/photo-1638454668466-e8dbd5462f20?w=400',
-          bedrooms: 2,
-          bathrooms: 2,
-          area: '1,200 sq ft',
-          savedDate: '2024-11-12'
+      
+      // Fetch user profile from backend
+      try {
+        const profileResponse = await getUserProfile();
+        if (profileResponse?.data) {
+          const backendUser = profileResponse.data;
+          setUserData({
+            displayName: backendUser.name || currentUser?.displayName || 'User',
+            email: backendUser.email || currentUser?.email || '',
+            photoURL: currentUser?.photoURL || '',
+            phone: backendUser.phone || '',
+            joinedDate: backendUser.createdAt || new Date().toISOString(),
+            verified: backendUser.verified || false
+          });
+        } else {
+          // Fallback to Firebase user data if backend profile not available
+          setUserData({
+            displayName: currentUser?.displayName || 'User',
+            email: currentUser?.email || '',
+            photoURL: currentUser?.photoURL || '',
+            phone: '',
+            joinedDate: new Date().toISOString(),
+            verified: false
+          });
         }
-      ]);
+      } catch (profileError) {
+        console.error('Error fetching user profile:', profileError);
+        // Fallback to Firebase user data
+        setUserData({
+          displayName: currentUser?.displayName || 'User',
+          email: currentUser?.email || '',
+          photoURL: currentUser?.photoURL || '',
+          phone: '',
+          joinedDate: new Date().toISOString(),
+          verified: false
+        });
+      }
 
-      setComparedProperties([
-        {
-          id: 3,
-          title: 'Contemporary Family Home',
-          price: '₹525,000',
-          location: 'Baroda, GJ',
-          image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400'
+      // Fetch saved listings
+      try {
+        const savedResponse = await getSavedListings();
+        if (savedResponse?.data && Array.isArray(savedResponse.data)) {
+          // Transform saved listings data to match component format
+          // Backend returns: SavedListing with listingId populated, which has propertyId populated
+          const transformedSaved = savedResponse.data.map((item) => {
+            const listing = item.listingId || item.listing;
+            const property = listing?.propertyId || listing?.property || {};
+            
+            return {
+              id: item._id || item.id,
+              listingId: listing?._id || item.listingId,
+              property: property,
+              title: property?.title || 'Property',
+              price: property?.price || 'N/A',
+              location: property?.location?.city 
+                ? `${property.location.city}, ${property.location.state || ''}` 
+                : 'Location N/A',
+              image: property?.images?.[0] || 'https://via.placeholder.com/400',
+              bedrooms: property?.bedrooms || 0,
+              bathrooms: property?.bathrooms || 0,
+              area: property?.size ? `${property.size} sq ft` : '0 sq ft',
+              savedDate: item.createdAt || item.savedAt || new Date().toISOString()
+            };
+          });
+          setSavedProperties(transformedSaved);
         }
-      ]);
+      } catch (savedError) {
+        console.error('Error fetching saved listings:', savedError);
+        setSavedProperties([]);
+      }
 
-      setListedProperties([
-        {
-          id: 101,
-          title: 'Spacious 3BHK Villa',
-          price: '₹1,200,000',
-          location: 'Surat, GJ',
-          image: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400',
-          status: 'active',
-          views: 245,
-          inquiries: 12,
-          listedDate: '2024-10-15'
-        },
-        {
-          id: 102,
-          title: 'Cozy Studio Apartment',
-          price: '₹2,500/month',
-          location: 'Ahmedabad, GJ',
-          image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400',
-          status: 'inactive',
-          views: 89,
-          inquiries: 3,
-          listedDate: '2024-11-01'
-        },
-        {
-          id: 103,
-          title: '2BHK Modern Flat',
-          price: '₹780,000',
-          location: 'Rajkot, GJ',
-          image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400',
-          status: 'pending',
-          views: 34,
-          inquiries: 1,
-          listedDate: '2024-11-10'
+      // Fetch compared properties
+      try {
+        const comparedResponse = await getComparedProperties();
+        // Backend returns an array of property objects directly (from comparison.propertyIds populated)
+        if (comparedResponse?.data && Array.isArray(comparedResponse.data)) {
+          // Transform compared properties data
+          const transformedCompared = comparedResponse.data.map((property) => ({
+            id: property._id || property.id,
+            title: property.title || 'Property',
+            price: property.price || 'N/A',
+            location: property.location?.city 
+              ? `${property.location.city}, ${property.location.state || ''}` 
+              : 'Location N/A',
+            image: property.images?.[0] || 'https://via.placeholder.com/400'
+          }));
+          setComparedProperties(transformedCompared);
         }
-      ]);
+      } catch (comparedError) {
+        // If no comparison found (404), it's okay - user just hasn't added any yet
+        if (comparedError.response?.status !== 404) {
+          console.error('Error fetching compared properties:', comparedError);
+        }
+        setComparedProperties([]);
+      }
 
-      setNotifications([
-        {
-          id: 1,
-          type: 'price_drop',
-          message: 'Price dropped on Modern Beachfront Condo',
-          date: '2024-11-15',
-          read: false
-        },
-        {
-          id: 2,
-          type: 'new_match',
-          message: 'New property matches your preferences',
-          date: '2024-11-14',
-          read: false
-        },
-        {
-          id: 3,
-          type: 'saved',
-          message: 'Property saved successfully',
-          date: '2024-11-12',
-          read: true
+      // Fetch user's listed properties (properties where user is the lister)
+      // Note: This would need a backend endpoint to get properties by lister
+      // For now, we'll try to get all properties and filter, or use an empty array
+      try {
+        const propertiesResponse = await getProperties();
+        if (propertiesResponse?.data && Array.isArray(propertiesResponse.data)) {
+          // Filter properties where current user is the lister
+          // This assumes the backend returns listing information with property
+          const userListings = propertiesResponse.data
+            .filter(p => p.listing?.lister?.firebaseUid === currentUser?.uid)
+            .map((p) => ({
+              id: p._id || p.id,
+              title: p.title || 'Property',
+              price: p.price || 'N/A',
+              location: p.location?.city 
+                ? `${p.location.city}, ${p.location.state || ''}` 
+                : 'Location N/A',
+              image: p.images?.[0] || 'https://via.placeholder.com/400',
+              status: p.listing?.status || 'pending',
+              views: p.listing?.views || 0,
+              inquiries: p.listing?.inquiries || 0,
+              listedDate: p.listing?.createdAt || p.createdAt || new Date().toISOString()
+            }));
+          setListedProperties(userListings);
         }
-      ]);
+      } catch (propertiesError) {
+        console.error('Error fetching listed properties:', propertiesError);
+        setListedProperties([]);
+      }
+
+      // Notifications - would need a separate endpoint
+      // For now, using empty array until notification API is set up
+      setNotifications([]);
 
       setLoading(false);
     } catch (error) {
@@ -247,12 +278,64 @@ const UserDashboard = () => {
     }
   };
 
-  const handleRemoveSaved = (propertyId) => {
-    setSavedProperties(savedProperties.filter(p => p.id !== propertyId));
+  const handleRemoveSaved = async (listingId) => {
+    try {
+      const { removeSavedListing } = await import('../../services/savedListingApi');
+      await removeSavedListing(listingId);
+      // Refresh saved listings
+      const savedResponse = await getSavedListings();
+      if (savedResponse?.data && Array.isArray(savedResponse.data)) {
+        const transformedSaved = savedResponse.data.map((item) => {
+          const listing = item.listingId || item.listing;
+          const property = listing?.propertyId || listing?.property || {};
+          
+          return {
+            id: item._id || item.id,
+            listingId: listing?._id || item.listingId,
+            property: property,
+            title: property?.title || 'Property',
+            price: property?.price || 'N/A',
+            location: property?.location?.city 
+              ? `${property.location.city}, ${property.location.state || ''}` 
+              : 'Location N/A',
+            image: property?.images?.[0] || 'https://via.placeholder.com/400',
+            bedrooms: property?.bedrooms || 0,
+            bathrooms: property?.bathrooms || 0,
+            area: property?.size ? `${property.size} sq ft` : '0 sq ft',
+            savedDate: item.createdAt || item.savedAt || new Date().toISOString()
+          };
+        });
+        setSavedProperties(transformedSaved);
+      }
+    } catch (error) {
+      console.error('Error removing saved listing:', error);
+    }
   };
 
-  const handleRemoveComparison = (propertyId) => {
-    setComparedProperties(comparedProperties.filter(p => p.id !== propertyId));
+  const handleRemoveComparison = async (propertyId) => {
+    try {
+      const { removePropertyFromComparison } = await import('../../services/comparisonApi');
+      await removePropertyFromComparison(propertyId);
+      // Refresh compared properties
+      const comparedResponse = await getComparedProperties();
+      if (comparedResponse?.data && Array.isArray(comparedResponse.data)) {
+        // Transform compared properties data - backend returns array of property objects
+        const transformedCompared = comparedResponse.data.map((property) => ({
+          id: property._id || property.id,
+          title: property.title || 'Property',
+          price: property.price || 'N/A',
+          location: property.location?.city 
+            ? `${property.location.city}, ${property.location.state || ''}` 
+            : 'Location N/A',
+          image: property.images?.[0] || 'https://via.placeholder.com/400'
+        }));
+        setComparedProperties(transformedCompared);
+      } else {
+        setComparedProperties([]);
+      }
+    } catch (error) {
+      console.error('Error removing comparison:', error);
+    }
   };
 
   const markNotificationAsRead = (notificationId) => {
@@ -588,12 +671,12 @@ const UserDashboard = () => {
               <div>
                 {savedProperties.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {savedProperties.map(property => (
+                      {savedProperties.map(property => (
                       <div key={property.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                         <div className="relative w-full h-48 overflow-hidden group">
                           <img src={property.image} alt={property.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                           <button
-                            onClick={() => handleRemoveSaved(property.id)}
+                            onClick={() => handleRemoveSaved(property.listingId || property.id)}
                             className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white text-pink-600 flex items-center justify-center transition-all duration-300 shadow-md hover:bg-pink-600 hover:text-white hover:scale-110"
                           >
                             <Heart size={20} fill="currentColor" />
@@ -604,7 +687,7 @@ const UserDashboard = () => {
                           <p className="text-2xl font-bold text-blue-600 mb-3">{property.price}</p>
                           <div className="flex items-center gap-2 text-gray-600 mb-4">
                             <MapPin size={16} />
-                            <span className="text-sm">{property.location}</span>
+                            <span className="text-sm">{formatLocation(property.location)}</span>
                           </div>
                           <div className="flex gap-4 mb-4 pt-4 border-t border-gray-200">
                             <span className="text-sm text-gray-600">{property.bedrooms} Beds</span>
@@ -733,7 +816,15 @@ const UserDashboard = () => {
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-2xl font-bold text-gray-800">Comparing {comparedProperties.length} Properties</h2>
                       <button
-                        onClick={() => setComparedProperties([])}
+                        onClick={async () => {
+                          try {
+                            const { clearComparison } = await import('../../services/comparisonApi');
+                            await clearComparison();
+                            setComparedProperties([]);
+                          } catch (error) {
+                            console.error('Error clearing comparison:', error);
+                          }
+                        }}
                         className="px-4 py-2 bg-red-500 text-white rounded-lg transition-all duration-300 hover:bg-red-600"
                       >
                         Clear All
@@ -751,7 +842,7 @@ const UserDashboard = () => {
                           <img src={property.image} alt={property.title} className="w-full h-36 object-cover rounded-lg mb-4" />
                           <h3 className="text-base font-semibold text-gray-800 mb-2">{property.title}</h3>
                           <p className="text-xl font-bold text-blue-600 mb-1">{property.price}</p>
-                          <p className="text-sm text-gray-600">{property.location}</p>
+                          <p className="text-sm text-gray-600">{formatLocation(property.location)}</p>
                         </div>
                       ))}
                     </div>

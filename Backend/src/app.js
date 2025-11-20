@@ -8,7 +8,7 @@ const app = express();
 // Enable CORS (Cross-Origin Resource Sharing)
 // This allows your backend to accept requests from the frontend (like React)
 app.use(cors({
-  origin: process.env.CORS_ORIGIN, // only allow requests from this frontend URL
+  origin: process.env.CORS_ORIGIN || "http://localhost:5173", // default to Vite dev server
   credentials: true // allow cookies & auth headers
 }));
 

@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { X, MapPin, Bed, Bath, Square, Calendar, Heart, Share, Phone, Mail } from "lucide-react";
+import { formatLocation } from "../../utils/formatLocation";
 
 export function PropertyDetails({ property, isOpen, onClose }) {
   const [liked, setLiked] = useState(false);
 
   if (!property || !isOpen) return null;
+  
+  // Format location if it's an object
+  const locationString = formatLocation(property.location);
 
   const getStatusBadge = () => {
     switch (property.status) {
@@ -28,7 +32,7 @@ export function PropertyDetails({ property, isOpen, onClose }) {
             <h2 className="text-2xl font-bold">{property.title}</h2>
             <div className="flex items-center gap-2 mt-1 text-gray-500">
               <MapPin className="h-4 w-4" />
-              <span>{property.location}</span>
+              <span>{locationString}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -101,44 +105,48 @@ export function PropertyDetails({ property, isOpen, onClose }) {
         </div>
 
         {/* Features */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-2">Features & Amenities</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {property.features.map((feature, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                <span className="text-sm">{feature}</span>
-              </div>
-            ))}
+        {property.features && Array.isArray(property.features) && property.features.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-2">Features & Amenities</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {property.features.map((feature, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                  <span className="text-sm">{feature}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <hr className="my-6 border-gray-200" />
 
         {/* Agent Info */}
-        <div>
-          <h3 className="text-lg font-semibold mb-2">Contact Agent</h3>
-          <div className="flex items-center gap-4 border rounded-lg p-4">
-            <img
-              src={property.agent.image}
-              alt={property.agent.name}
-              className="w-16 h-16 rounded-full object-cover"
-              onError={(e) => e.target.src = "/placeholder.jpg"}
-            />
-            <div className="flex-1">
-              <h4 className="font-semibold">{property.agent.name}</h4>
-              <p className="text-sm text-gray-500">Real Estate Agent</p>
-            </div>
-            <div className="flex gap-2">
-              <button className="flex items-center gap-1 border border-blue-600 text-blue-600 px-3 py-1 rounded hover:bg-blue-50">
-                <Phone className="h-4 w-4" /> Call
-              </button>
-              <button className="flex items-center gap-1 border border-blue-600 text-blue-600 px-3 py-1 rounded hover:bg-blue-50">
-                <Mail className="h-4 w-4" /> Email
-              </button>
+        {property.agent && (
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Contact Agent</h3>
+            <div className="flex items-center gap-4 border rounded-lg p-4">
+              <img
+                src={property.agent?.image || "/placeholder.jpg"}
+                alt={property.agent?.name || "Agent"}
+                className="w-16 h-16 rounded-full object-cover"
+                onError={(e) => e.target.src = "/placeholder.jpg"}
+              />
+              <div className="flex-1">
+                <h4 className="font-semibold">{property.agent?.name || "Agent"}</h4>
+                <p className="text-sm text-gray-500">Real Estate Agent</p>
+              </div>
+              <div className="flex gap-2">
+                <button className="flex items-center gap-1 border border-blue-600 text-blue-600 px-3 py-1 rounded hover:bg-blue-50">
+                  <Phone className="h-4 w-4" /> Call
+                </button>
+                <button className="flex items-center gap-1 border border-blue-600 text-blue-600 px-3 py-1 rounded hover:bg-blue-50">
+                  <Mail className="h-4 w-4" /> Email
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

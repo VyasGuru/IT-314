@@ -284,7 +284,7 @@ const forgetPassword = asyncHandler(async (req, res) => {
         const user = await admin.auth().getUserByEmail(email);
 
         if(!user){
-            return new ApiError(404, "Invalid Email. No Account Found");
+            throw new ApiError(404, "Invalid Email. No Account Found");
         }
 
         const resetLink = await admin.auth().generatePasswordResetLink(email);
@@ -293,26 +293,67 @@ const forgetPassword = asyncHandler(async (req, res) => {
             throw new ApiError(500, "Error in generating reset link");
         }
 
-        //it's take 5-6 minute
-        await sendEmail(
-            email,
-            "Reset your password",
-            `
-                <h3>Hello ${user.displayName || "User"},</h3>
-                <p>Click the link below to reset your password:</p>
-                <a href="${resetLink}" target="_blank">Reset Password</a>
-                <br><br>
-                <p>If you did not request this, ignore this email.</p>
-            `
-        );
+        // Try to send email - if email service is not configured, still return success with link
+        try {
+            //it's take 5-6 minute
+            await sendEmail(
+                email,
+                "Reset your password",
+                `
+                    <h3>Hello ${user.displayName || "User"},</h3>
+                    <p>Click the link below to reset your password:</p>
+                    <a href="${resetLink}" target="_blank">Reset Password</a>
+                    <br><br>
+                    <p>If you did not request this, ignore this email.</p>
+                `
+            );
+        } catch (emailError) {
+            // If email fails, log but don't fail the request - user can still use the reset link
+            console.error("Failed to send email (email service may not be configured):", emailError.message);
+            // Continue and return the reset link anyway
+        }
 
         res.status(200).json(
-            new ApiResponse(200, {resetLink} , "Password reset email sent successfully")
+            new ApiResponse(200, {resetLink} , "Password reset link generated successfully. Please check your email for the reset link.")
         );
     } 
     
     catch (err) {
-        throw new ApiError(500, `Error in password recovery. \n Error is : ${err.message}`)
+        // Handle Firebase auth errors specifically
+        if (err.code === 'auth/user-not-found') {
+            throw new ApiError(404, "No account found with this email address.");
+        }
+        throw new ApiError(500, `Error in password recovery. Error: ${err.message}`)
+    }
+});
+
+
+const updateUserDetails = asyncHandler(async (req, res) => {
+    try {
+        const { name, phone } = req.body;
+        const uid = req.user.firebaseUid;
+
+        const user = await User.findOne({ firebaseUid: uid });
+
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        if (name) {
+            user.name = name;
+        }
+
+        if (phone) {
+            user.phone = phone;
+        }
+
+        await user.save();
+
+        res.status(200).json(
+            new ApiResponse(200, user, "User details updated successfully")
+        );
+    } catch (err) {
+        throw new ApiError(500, `Error while updating user details. Error is : ${err.message}`);
     }
 });
 
@@ -325,4 +366,5 @@ export{
     getProfile,
     resetPassword,
     forgetPassword,
+    updateUserDetails,
 };

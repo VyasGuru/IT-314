@@ -1,14 +1,18 @@
 // admin controllers
 
 import { classifyReviewWithLLM } from "./moderationService.js";
-import { Review } from "../models/review.models.js";
-import { Admin } from "../models/admin.models.js";
+import { Review } from "./models/Review.js";
+import { Admin } from "./models/Admin.js";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "replace_this_with_strong_secret";
 
 // register new admin
 export async function registerAdmin(req, res) {
+  // TODO: This function is not working because the User model does not have username and password fields.
+  // This needs to be updated to work with the User model and Firebase authentication.
+  res.status(500).json({ message: "This feature is not implemented yet." });
+  /*
   try {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ message: "username and password required" });
@@ -24,10 +28,15 @@ export async function registerAdmin(req, res) {
     console.error("Error registering admin:", err);
     res.status(500).json({ message: "Error registering admin", error: err.message });
   }
+  */
 }
 
 // login admin and issue token
 export async function loginAdmin(req, res) {
+  // TODO: This function is not working because the User model does not have username and password fields.
+  // This needs to be updated to work with the User model and Firebase authentication.
+  res.status(500).json({ message: "This feature is not implemented yet." });
+  /*
   try {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ message: "username and password required" });
@@ -45,6 +54,7 @@ export async function loginAdmin(req, res) {
     console.error("Error logging in admin:", err);
     res.status(500).json({ message: "Error logging in", error: err.message });
   }
+  */
 }
 
 // classify a review and store it
