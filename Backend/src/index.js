@@ -1,13 +1,11 @@
 //write function in db folder and import here
 
-import dotenv from "dotenv"
+import dotenv from "dotenv";
 import connectDB from "./db/index.js";
-import { app } from "./app.js"
+import { app } from "./app.js";
 import { seedGovernmentRecords } from "./utils/seedGovernmentRecords.js";
 
-dotenv.config({
-    path: './env'
-})
+dotenv.config({ path: "./.env" });
 
 connectDB().then(async () => {
 
