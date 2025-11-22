@@ -12,6 +12,7 @@ import ContactPage from "./components/contact_page/ContactPage";
 import LoginPage from "./components/login_page/LoginPage";
 import RegisterPage from "./components/login_page/RegisterPage";
 import ForgotPasswordPage from "./components/login_page/ForgotPasswordPage";
+import AdminForgotPasswordPage from "./components/login_page/AdminForgotPasswordPage";
 import UserDashboard from "./components/user_dashboard/UserDashboard";
 import PropertiesPage from "./components/properties_page/PropertiesPage";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -79,6 +80,14 @@ export default function App() {
           element={
             <div className="min-h-screen bg-white flex items-center justify-center">
               <ForgotPasswordPage />
+            </div>
+          }
+        />
+        <Route
+          path="/admin/forgot-password"
+          element={
+            <div className="min-h-screen bg-white flex items-center justify-center">
+              <AdminForgotPasswordPage />
             </div>
           }
         />

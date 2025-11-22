@@ -29,7 +29,11 @@ const LandingPage = () => {
   useEffect(() => {
     const fetchProperties = async () => {
       try {
-        const response = await getProperties();
+        // Send all filters and sortBy to backend
+        const response = await getProperties({
+          ...filters,
+          sortBy: sortBy
+        });
         if (response?.data && Array.isArray(response.data)) {
           setProperties(response.data);
           setFilteredProperties(response.data);
@@ -54,183 +58,10 @@ const LandingPage = () => {
     };
 
     fetchProperties();
-  }, []);
-
-  useEffect(() => {
-    let tempProperties = [...properties];
-
-    // Filtering first, before sorting - Case insensitive search
-    if (filters.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase().trim();
-      tempProperties = tempProperties.filter((p) => {
-        // Search in title (case insensitive)
-        const titleMatch = p.title?.toLowerCase().includes(searchLower);
-        
-        // Search in description (case insensitive)
-        const descriptionMatch = p.description?.toLowerCase().includes(searchLower);
-        
-        // Search in location fields (case insensitive)
-        const cityMatch = p.location?.city?.toLowerCase().includes(searchLower);
-        const stateMatch = p.location?.state?.toLowerCase().includes(searchLower);
-        const streetMatch = p.location?.street?.toLowerCase().includes(searchLower);
-        const localityMatch = p.location?.locality?.toLowerCase().includes(searchLower);
-        const zipCodeMatch = p.location?.zipCode?.toLowerCase().includes(searchLower);
-        
-        // Search in full location string (case insensitive)
-        const locationString = `${p.location?.street || ''} ${p.location?.locality || ''} ${p.location?.city || ''} ${p.location?.state || ''} ${p.location?.zipCode || ''}`.toLowerCase();
-        const locationMatch = locationString.includes(searchLower);
-        
-        // Search in property type (case insensitive)
-        const propertyTypeMatch = p.propertyType?.toLowerCase().includes(searchLower);
-        
-        return titleMatch || descriptionMatch || cityMatch || stateMatch || 
-               streetMatch || localityMatch || zipCodeMatch || locationMatch || 
-               propertyTypeMatch;
-      });
-    }
-    
-    if (filters.propertyType) {
-      tempProperties = tempProperties.filter(
-        (p) => p.propertyType === filters.propertyType
-      );
-    }
-    
-    // Bedrooms filter
-    if (filters.bedrooms) {
-      if (filters.bedrooms === "5+") {
-        tempProperties = tempProperties.filter((p) => p.bedrooms >= 5);
-      } else {
-        const bedrooms = parseInt(filters.bedrooms);
-        tempProperties = tempProperties.filter((p) => p.bedrooms === bedrooms);
-      }
-    }
-    
-    // Bathrooms filter
-    if (filters.bathrooms) {
-      if (filters.bathrooms === "4+") {
-        tempProperties = tempProperties.filter((p) => p.bathrooms >= 4);
-      } else {
-        const bathrooms = parseInt(filters.bathrooms);
-        tempProperties = tempProperties.filter((p) => p.bathrooms === bathrooms);
-      }
-    }
-    
-    // Price range filter
-    if (filters.priceRange) {
-      tempProperties = tempProperties.filter((p) => {
-        const price = typeof p.price === 'number' ? p.price : parseFloat(p.price?.toString().replace(/[^0-9.-]+/g, "") || 0);
-        
-        switch (filters.priceRange) {
-          case "0-100k":
-            return price >= 0 && price <= 100000;
-          case "100k-300k":
-            return price > 100000 && price <= 300000;
-          case "300k-500k":
-            return price > 300000 && price <= 500000;
-          case "500k-1m":
-            return price > 500000 && price <= 1000000;
-          case "1m+":
-            return price > 1000000;
-          default:
-            return true;
-        }
-      });
-    }
-    
-    // Amenities filter - Map frontend amenity names to backend keys
-    if (filters.amenities && filters.amenities.length > 0) {
-      const amenityMap = {
-        "Swimming Pool": "swimmingPool",
-        "Gym": "gym",
-        "Parking": "parking",
-        "Balcony": "balcony",
-        "Garden": "garden",
-        "Security": "security",
-        "Elevator": "lift",
-        "Air Conditioning": "airConditioning",
-        "Fireplace": "fireplace",
-        "Garage": "garage",
-        "WiFi": "wifi",
-        "Power Backup": "powerBackup",
-        "Clubhouse": "clubhouse",
-        "Play Area": "playArea",
-        "Furnished": "furnished",
-      };
-      
-      tempProperties = tempProperties.filter((p) => {
-        if (!p.amenities || typeof p.amenities !== 'object') return false;
-        // Check if property has at least one of the selected amenities
-        return filters.amenities.some((amenity) => {
-          const backendKey = amenityMap[amenity] || amenity.toLowerCase().replace(/\s+/g, '');
-          // Try both the mapped key and original key (case insensitive)
-          return (
-            p.amenities[backendKey] === true ||
-            p.amenities[amenity] === true ||
-            p.amenities[amenity.toLowerCase()] === true ||
-            p.amenities[amenity.toLowerCase().replace(/\s+/g, '')] === true
-          );
-        });
-      });
-    }
-
-    // Featured filter - only if sortBy is "featured"
-    if (sortBy === "featured") {
-      // Show featured first, but also show non-featured if no featured properties
-      const featuredProperties = tempProperties.filter((p) => p.featured === true);
-      if (featuredProperties.length > 0) {
-        tempProperties = featuredProperties;
-      }
-      // If no featured properties, show all (don't filter)
-    }
-
-    // Sorting
-    switch (sortBy) {
-      case "price-low":
-        tempProperties.sort((a, b) => {
-          const priceA = typeof a.price === 'number' ? a.price : parseFloat(a.price?.toString().replace(/[^0-9.-]+/g, "") || 0);
-          const priceB = typeof b.price === 'number' ? b.price : parseFloat(b.price?.toString().replace(/[^0-9.-]+/g, "") || 0);
-          return priceA - priceB;
-        });
-        break;
-      case "price-high":
-        tempProperties.sort((a, b) => {
-          const priceA = typeof a.price === 'number' ? a.price : parseFloat(a.price?.toString().replace(/[^0-9.-]+/g, "") || 0);
-          const priceB = typeof b.price === 'number' ? b.price : parseFloat(b.price?.toString().replace(/[^0-9.-]+/g, "") || 0);
-          return priceB - priceA;
-        });
-        break;
-      case "newest":
-        tempProperties.sort((a, b) => {
-          const yearA = a.yearBuild || a.yearBuilt || 0;
-          const yearB = b.yearBuild || b.yearBuilt || 0;
-          return yearB - yearA;
-        });
-        break;
-      case "oldest":
-        tempProperties.sort((a, b) => {
-          const yearA = a.yearBuild || a.yearBuilt || 0;
-          const yearB = b.yearBuild || b.yearBuilt || 0;
-          return yearA - yearB;
-        });
-        break;
-      case "featured":
-        // Already filtered above, but also sort featured first
-        tempProperties.sort((a, b) => {
-          if (a.featured && !b.featured) return -1;
-          if (!a.featured && b.featured) return 1;
-          return 0;
-        });
-        break;
-      default:
-        // Default: show all properties, no special sorting
-        break;
-    }
-
-    setFilteredProperties(tempProperties);
-  }, [filters, sortBy, properties]);
+  }, [filters, sortBy]);
 
   const handleViewDetails = (propertyId) => {
-    const property = properties.find((p) => p._id === propertyId);
+    const property = filteredProperties.find((p) => p._id === propertyId);
     setSelectedProperty(property || null);
     setIsDetailsOpen(true);
   };

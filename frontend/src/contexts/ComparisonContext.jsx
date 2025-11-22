@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { useAuth } from "./AuthContext";
 import {
   addPropertyToComparison,
   clearComparison as clearComparisonApi,
@@ -50,12 +51,19 @@ const usePersistedState = (initialValue) => {
 };
 
 export const ComparisonProvider = ({ children }) => {
+  const { currentUser } = useAuth();
   const [properties, setProperties] = usePersistedState([]);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
   const [error, setError] = useState(null);
 
   const refreshComparison = useCallback(async () => {
+    // Only fetch from backend if user is authenticated
+    if (!currentUser) {
+      // User not logged in - just use cached/local storage data
+      return;
+    }
+    
     try {
       setLoading(true);
       const response = await getComparedProperties();
@@ -66,6 +74,9 @@ export const ComparisonProvider = ({ children }) => {
       const status = err?.response?.status;
       if (status === 404) {
         setProperties([]);
+      } else if (status === 401) {
+        // User not authenticated - clear error and use cached data
+        setError(null);
       } else if (status !== 400) {
         setError(err?.response?.data?.message || err.message);
       }
@@ -73,7 +84,7 @@ export const ComparisonProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [setProperties]);
+  }, [setProperties, currentUser]);
 
   useEffect(() => {
     refreshComparison();
@@ -90,7 +101,11 @@ export const ComparisonProvider = ({ children }) => {
       setUpdatingId(property._id);
       setError(null);
       try {
-        await addPropertyToComparison(property._id);
+        // Only sync with backend if user is authenticated
+        if (currentUser) {
+          await addPropertyToComparison(property._id);
+        }
+        // Always update local state (works for both authenticated and unauthenticated users)
         setProperties((prev) => {
           const alreadyAdded = prev.some(
             (item) => (item._id || item.id) === property._id
@@ -101,13 +116,26 @@ export const ComparisonProvider = ({ children }) => {
           return [...prev, property];
         });
       } catch (err) {
-        setError(err?.response?.data?.message || err.message);
-        throw err;
+        // If auth error, just use local storage
+        if (err?.response?.status === 401) {
+          setProperties((prev) => {
+            const alreadyAdded = prev.some(
+              (item) => (item._id || item.id) === property._id
+            );
+            if (alreadyAdded) {
+              return prev;
+            }
+            return [...prev, property];
+          });
+        } else {
+          setError(err?.response?.data?.message || err.message);
+          throw err;
+        }
       } finally {
         setUpdatingId(null);
       }
     },
-    [properties.length, setProperties]
+    [properties.length, setProperties, currentUser]
   );
 
   const removeProperty = useCallback(
@@ -116,35 +144,50 @@ export const ComparisonProvider = ({ children }) => {
       setUpdatingId(propertyId);
       setError(null);
       try {
-        await removePropertyFromComparison(propertyId);
+        // Only sync with backend if user is authenticated
+        if (currentUser) {
+          await removePropertyFromComparison(propertyId);
+        }
+        // Always update local state
         setProperties((prev) =>
           prev.filter((item) => (item._id || item.id) !== propertyId)
         );
       } catch (err) {
-        setError(err?.response?.data?.message || err.message);
-        throw err;
+        // If auth error, just update local state
+        if (err?.response?.status === 401) {
+          setProperties((prev) =>
+            prev.filter((item) => (item._id || item.id) !== propertyId)
+          );
+        } else {
+          setError(err?.response?.data?.message || err.message);
+          throw err;
+        }
       } finally {
         setUpdatingId(null);
       }
     },
-    [setProperties]
+    [setProperties, currentUser]
   );
 
   const clearAll = useCallback(async () => {
     setError(null);
     setUpdatingId("all");
     try {
-      await clearComparisonApi();
+      // Only sync with backend if user is authenticated
+      if (currentUser) {
+        await clearComparisonApi();
+      }
     } catch (err) {
-      // it's okay if backend doesn't have anything to clear
+      // it's okay if backend doesn't have anything to clear or if user is not authenticated
       if (err?.response?.status && err.response.status >= 500) {
         setError(err?.response?.data?.message || err.message);
       }
     } finally {
+      // Always clear local state
       setProperties([]);
       setUpdatingId(null);
     }
-  }, [setProperties]);
+  }, [setProperties, currentUser]);
 
   const value = {
     properties,

@@ -9,17 +9,67 @@ import api from "./api";
 export const getProperties = async (filters = {}) => {
   const params = new URLSearchParams();
   
+  // Search term
+  if (filters.searchTerm) params.append("searchTerm", filters.searchTerm);
+  if (filters.search) params.append("search", filters.search);
+  
+  // Property type
   if (filters.propertyType) params.append("propertyType", filters.propertyType);
+  
+  // Price range (frontend format like "0-100k")
+  if (filters.priceRange) params.append("priceRange", filters.priceRange);
+  
+  // Individual price filters (alternative to priceRange)
   if (filters.minPrice) params.append("minPrice", filters.minPrice);
   if (filters.maxPrice) params.append("maxPrice", filters.maxPrice);
+  
+  // Bedrooms (supports "5+" format)
   if (filters.bedrooms) params.append("bedrooms", filters.bedrooms);
+  
+  // Bathrooms (supports "4+" format)
   if (filters.bathrooms) params.append("bathrooms", filters.bathrooms);
+  
+  // Location
+  if (filters.location) params.append("location", filters.location);
   if (filters.city) params.append("city", filters.city);
   if (filters.state) params.append("state", filters.state);
-  if (filters.search) params.append("search", filters.search);
+  
+  // Size filters
+  if (filters.minSize) params.append("minSize", filters.minSize);
+  if (filters.maxSize) params.append("maxSize", filters.maxSize);
+  
+  // Year built
+  if (filters.year_built) params.append("year_built", filters.year_built);
+  
+  // Amenities (array of strings)
   if (filters.amenities && filters.amenities.length > 0) {
-    params.append("amenities", filters.amenities.join(","));
+    // Map frontend amenity names to backend keys
+    const amenityMap = {
+      "Swimming Pool": "swimmingPool",
+      "Gym": "gym",
+      "Parking": "parking",
+      "Balcony": "balcony",
+      "Garden": "garden",
+      "Security": "security",
+      "Elevator": "lift",
+      "Air Conditioning": "airConditioning",
+      "Fireplace": "fireplace",
+      "Garage": "garage",
+      "WiFi": "wifi",
+      "Power Backup": "powerBackup",
+      "Clubhouse": "clubhouse",
+      "Play Area": "playArea",
+      "Furnished": "furnished",
+    };
+    
+    const backendAmenities = filters.amenities.map(amenity => 
+      amenityMap[amenity] || amenity.toLowerCase().replace(/\s+/g, '')
+    );
+    params.append("amenities", backendAmenities.join(","));
   }
+  
+  // Sorting
+  if (filters.sortBy) params.append("sortBy", filters.sortBy);
   
   const queryString = params.toString();
   const url = `/properties${queryString ? `?${queryString}` : ""}`;

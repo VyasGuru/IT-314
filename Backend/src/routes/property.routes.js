@@ -13,6 +13,7 @@ import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router()
 
+// Public route - no authentication required for browsing/searching properties
 router.route("/").get(getFilteredProperties)
 
 router.route("/create").post(

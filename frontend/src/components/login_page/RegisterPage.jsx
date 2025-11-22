@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { Shield, User, AlertCircle } from "lucide-react";
-import { isAllowedAdminEmail } from "../../config/adminEmails";
+import { Shield, User } from "lucide-react";
 
 export default function RegisterPage() {
   const [selectedRole, setSelectedRole] = useState(null); // 'admin' or 'user'
@@ -28,8 +27,8 @@ export default function RegisterPage() {
               </div>
               <span className="text-[#0066FF] text-xl font-semibold">FindMySquare</span>
             </Link>
-            <h2 className="text-white text-2xl font-normal mb-2">Create your account</h2>
-            <p className="text-gray-400 text-sm">Please select your account type</p>
+            <h2 className="text-white text-2xl font-normal mb-2">Join Our Community</h2>
+            <p className="text-gray-400 text-sm">First, let us know what you're here for.</p>
           </div>
 
           <div className="space-y-4">
@@ -41,8 +40,8 @@ export default function RegisterPage() {
                 <Shield className="h-6 w-6 text-[#0066FF]" />
               </div>
               <div className="flex-1 text-left">
-                <h3 className="text-white font-semibold text-lg">Administrator</h3>
-                <p className="text-gray-400 text-sm">Register as an admin (Authorized emails only)</p>
+                <h3 className="text-white font-semibold text-lg">I'm an Administrator</h3>
+                <p className="text-gray-400 text-sm">For property managers and staff.</p>
               </div>
             </button>
 
@@ -54,8 +53,8 @@ export default function RegisterPage() {
                 <User className="h-6 w-6 text-[#0066FF]" />
               </div>
               <div className="flex-1 text-left">
-                <h3 className="text-white font-semibold text-lg">User</h3>
-                <p className="text-gray-400 text-sm">Register as a regular user</p>
+                <h3 className="text-white font-semibold text-lg">I'm a User</h3>
+                <p className="text-gray-400 text-sm">For browsing and saving properties.</p>
               </div>
             </button>
           </div>
@@ -75,15 +74,6 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    // Validate admin email if registering as admin
-    if (selectedRole === "admin") {
-      const normalizedEmail = email.toLowerCase().trim();
-      if (!isAllowedAdminEmail(normalizedEmail)) {
-        setError("Only authorized emails can register as administrators. Please contact support if you need admin access.");
-        return;
-      }
-    }
-
     // Validation
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -101,10 +91,6 @@ export default function RegisterPage() {
       await registerWithEmailPassword(email, password, name, selectedRole);
       navigate("/");
     } catch (error) {
-      // Handle different Firebase auth errors
-      if (error.code === "auth/unauthorized-admin" || error.message?.includes("authorized")) {
-        setError("Only authorized emails can register as administrators. Please contact support if you need admin access.");
-      } else {
         switch (error.code) {
           case "auth/email-already-in-use":
             setError("This email is already registered.");
@@ -115,13 +101,9 @@ export default function RegisterPage() {
           case "auth/weak-password":
             setError("Password is too weak.");
             break;
-          case "auth/operation-not-allowed":
-            setError("Email/password accounts are not enabled.");
-            break;
           default:
             setError(error.message || "Failed to create account. Please try again.");
         }
-      }
     } finally {
       setLoading(false);
     }
@@ -134,10 +116,7 @@ export default function RegisterPage() {
       await signInWithGoogle(selectedRole);
       navigate("/");
     } catch (error) {
-      console.error("Google sign-in error:", error);
-      if (error.message && error.message.includes("authorized")) {
-        setError("Only authorized emails can register as administrators. Please contact support if you need admin access.");
-      } else if (error.message && error.message.includes("registered as")) {
+      if (error.message && error.message.includes("registered as")) {
         setError(error.message);
       } else if (error.code === "auth/popup-closed-by-user") {
         setError("Sign-in was cancelled.");
@@ -161,7 +140,7 @@ export default function RegisterPage() {
             </div>
             <span className="text-[#0066FF] text-xl font-semibold">FindMySquare</span>
           </Link>
-          <h2 className="text-white text-2xl font-normal">Register as {selectedRole === "admin" ? "Administrator" : "User"}</h2>
+          <h2 className="text-white text-2xl font-normal">Create Your {selectedRole === "admin" ? "Administrator" : "User"} Account</h2>
           <button
             onClick={() => setSelectedRole(null)}
             className="mt-2 text-gray-400 hover:text-white text-sm"
@@ -169,18 +148,6 @@ export default function RegisterPage() {
             Change account type
           </button>
         </div>
-
-        {selectedRole === "admin" && (
-          <div className="mb-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-3 flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-yellow-400 text-sm font-medium">Admin Registration Restricted</p>
-              <p className="text-yellow-300/80 text-xs mt-1">
-                Only authorized email addresses can register as administrators. If your email is not authorized, please contact support.
-              </p>
-            </div>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -200,22 +167,13 @@ export default function RegisterPage() {
           <div>
             <label htmlFor="email" className="text-white text-base block mb-2">
               Email address
-              {selectedRole === "admin" && (
-                <span className="text-yellow-400 text-xs ml-2">(Must be authorized)</span>
-              )}
             </label>
             <input
               id="email"
               type="email"
               required
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                // Clear error when email changes
-                if (error && error.includes("authorized")) {
-                  setError("");
-                }
-              }}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-[#2b2f33] border-none rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
             />
           </div>
@@ -262,7 +220,7 @@ export default function RegisterPage() {
             disabled={loading || googleLoading}
             className="w-full bg-[#FF4D4D] hover:bg-[#ff6666] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg text-base font-medium transition-colors"
           >
-            {loading ? "Creating account..." : "Register"}
+            {loading ? "Creating account..." : "Create Account"}
           </button>
         </form>
 
@@ -272,7 +230,7 @@ export default function RegisterPage() {
               <div className="w-full border-t border-gray-600"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-[#1c1f26] text-gray-400">Or continue with</span>
+              <span className="px-2 bg-[#1c1f26] text-gray-400">Or sign up with</span>
             </div>
           </div>
 

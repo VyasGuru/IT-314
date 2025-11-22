@@ -24,12 +24,43 @@ const mapListingStatusToStats = (status) => {
 
 const getFilteredProperties = asyncHandler(async (req, res) => {
     try {
-        const { minPrice, maxPrice, location, minSize, maxSize, bedrooms, bathrooms, propertyType, year_built, amenities } = req.query;
+        const { 
+            minPrice, 
+            maxPrice, 
+            location, 
+            minSize, 
+            maxSize, 
+            bedrooms, 
+            bathrooms, 
+            propertyType, 
+            year_built, 
+            amenities,
+            searchTerm,
+            search,
+            priceRange,
+            sortBy
+        } = req.query;
 
         // Create an empty filter object
         let filter = {};
 
-        // Add filters dynamically
+        // Search term filter - search in title, description, and location fields
+        const searchQuery = searchTerm || search;
+        if (searchQuery) {
+            const searchRegex = { $regex: searchQuery, $options: "i" };
+            filter.$or = [
+                { title: searchRegex },
+                { description: searchRegex },
+                { "location.city": searchRegex },
+                { "location.state": searchRegex },
+                { "location.street": searchRegex },
+                { "location.locality": searchRegex },
+                { "location.zipCode": searchRegex },
+                { propertyType: searchRegex }
+            ];
+        }
+
+        // Location filter (city)
         if (location) {
             filter["location.city"] = {
                 $regex: location,
@@ -37,7 +68,39 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
             };
         }
 
-        if (minPrice || maxPrice) {
+        // Price filter - handle both minPrice/maxPrice and priceRange
+        if (priceRange) {
+            let rangeMin = 0;
+            let rangeMax = Infinity;
+            
+            switch (priceRange) {
+                case "0-100k":
+                    rangeMin = 0;
+                    rangeMax = 100000;
+                    break;
+                case "100k-300k":
+                    rangeMin = 100001;
+                    rangeMax = 300000;
+                    break;
+                case "300k-500k":
+                    rangeMin = 300001;
+                    rangeMax = 500000;
+                    break;
+                case "500k-1m":
+                    rangeMin = 500001;
+                    rangeMax = 1000000;
+                    break;
+                case "1m+":
+                    rangeMin = 1000001;
+                    rangeMax = Infinity;
+                    break;
+            }
+            
+            filter.price = {
+                $gte: rangeMin,
+                ...(rangeMax !== Infinity && { $lte: rangeMax })
+            };
+        } else if (minPrice || maxPrice) {
             filter.price = {};
             if (minPrice) {
                 filter.price.$gte = Number(minPrice);
@@ -47,6 +110,7 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
             }
         }
 
+        // Size filter
         if (minSize || maxSize) {
             filter.size = {};
             if (minSize) {
@@ -57,14 +121,25 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
             }
         }
 
+        // Bedrooms filter - handle "5+" case
         if (bedrooms) {
-            filter.bedrooms = Number(bedrooms);
+            if (bedrooms === "5+") {
+                filter.bedrooms = { $gte: 5 };
+            } else {
+                filter.bedrooms = Number(bedrooms);
+            }
         }
 
+        // Bathrooms filter - handle "4+" case
         if (bathrooms) {
-            filter.bathrooms = Number(bathrooms);
+            if (bathrooms === "4+") {
+                filter.bathrooms = { $gte: 4 };
+            } else {
+                filter.bathrooms = Number(bathrooms);
+            }
         }
 
+        // Property type filter
         if (propertyType) {
             const typeMapping = {
                 "House": "residential",
@@ -73,17 +148,17 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
                 "Commercial": "commercial",
                 "Land": "land",
             };
-            const backendType = typeMapping[propertyType];
-            if (backendType) {
-                filter.propertyType = backendType;
-            }
+            const backendType = typeMapping[propertyType] || propertyType;
+            filter.propertyType = backendType;
         }
 
+        // Year built filter
         if (year_built) {
             filter.yearBuild = {};
             filter.yearBuild.$lte = Number(year_built);
         }
 
+        // Amenities filter
         if (amenities) {
             const validAmenities = [
                 "parking",
@@ -103,13 +178,57 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
                 validAmenities.includes(a)
             );
             if (validSelected.length > 0) {
-                filter.$or = validSelected.map((a) => ({
-                    [`amenities.${a}`]: true,
-                }));
+                // If search term exists, merge with $or, otherwise create new $or
+                if (filter.$or) {
+                    // Combine search $or with amenities $or using $and
+                    filter.$and = [
+                        { $or: filter.$or },
+                        { $or: validSelected.map((a) => ({
+                            [`amenities.${a}`]: true,
+                        })) }
+                    ];
+                    delete filter.$or;
+                } else {
+                    filter.$or = validSelected.map((a) => ({
+                        [`amenities.${a}`]: true,
+                    }));
+                }
             }
         }
 
-        const properties = await Property.find(filter);
+        // Build query
+        let query = Property.find(filter);
+
+        // Sorting
+        if (sortBy) {
+            switch (sortBy) {
+                case "price-low":
+                    query = query.sort({ price: 1 });
+                    break;
+                case "price-high":
+                    query = query.sort({ price: -1 });
+                    break;
+                case "newest":
+                    query = query.sort({ yearBuild: -1 });
+                    break;
+                case "oldest":
+                    query = query.sort({ yearBuild: 1 });
+                    break;
+                case "featured":
+                    // Sort by featured first, then by creation date
+                    query = query.sort({ featured: -1, createdAt: -1 });
+                    break;
+                default:
+                    // Default sort by creation date (newest first)
+                    query = query.sort({ createdAt: -1 });
+                    break;
+            }
+        } else {
+            // Default sort by creation date (newest first)
+            query = query.sort({ createdAt: -1 });
+        }
+
+        const properties = await query.exec();
 
         return res.status(200).json(
             new ApiResponse(200, properties, "Property search successfully")

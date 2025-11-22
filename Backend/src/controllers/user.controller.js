@@ -6,6 +6,9 @@ import admin from "firebase-admin";
 import fetch from "node-fetch"; //for reset password and call firebase REST API
 import { sendEmail } from "../utils/sendMail.js";
 
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+
 //register
 const registerUser = asyncHandler(async (req, res) => {
 
@@ -14,6 +17,10 @@ const registerUser = asyncHandler(async (req, res) => {
 
         if(!firebaseUid || !email || !name || !role || (role === 'lister' && !phone)){ // if user is lister then phone number is required
             throw new ApiError(400, "All fields required");
+        }
+
+        if (email === ADMIN_EMAIL) {
+            throw new ApiError(403, "Registration for the admin account is not allowed. Please login instead.");
         }
 
         const existing = await User.findOne({firebaseUid});
@@ -42,7 +49,6 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 });
 
-
 //login (email + password) 
 //how to add role and phone number is remaing
 const loginUser = asyncHandler(async (req, res) => {
@@ -65,6 +71,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
         let user = await User.findOne({firebaseUid: uid});
 
+        const isAdmin = email === ADMIN_EMAIL;
+
         //if user is present in firebase but not in mongodb then add it
         //firebase store - uid, name, email, password
         if(!user){
@@ -73,10 +81,14 @@ const loginUser = asyncHandler(async (req, res) => {
                     firebaseUid: uid,
                     email,
                     name: decoded.name || "Unnamed User",
-                    role: "visitor",
+                    role: isAdmin ? "admin" : "visitor",
                 }
             );
+        } else if (isAdmin && user.role !== "admin") {
+            user.role = "admin";
+            await user.save();
         }
+
 
         res.status(200).json(
             new ApiResponse(
@@ -118,6 +130,8 @@ const googleLogin = asyncHandler(async (req, res) => {
 
         let user = await User.findOne({firebaseUid: uid});
 
+        const isAdmin = email === ADMIN_EMAIL;
+
         if(!user){
 
             user = await User.create(
@@ -125,9 +139,12 @@ const googleLogin = asyncHandler(async (req, res) => {
                     firebaseUid: uid,
                     email,
                     name,
-                    role: "visitor",
+                    role: isAdmin ? "admin" : "visitor",
                 }
             );
+        } else if (isAdmin && user.role !== "admin") {
+            user.role = "admin";
+            await user.save();
         }
 
         res.status(200).json(
