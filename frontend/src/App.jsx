@@ -14,7 +14,6 @@ import RegisterPage from "./components/login_page/RegisterPage";
 import ForgotPasswordPage from "./components/login_page/ForgotPasswordPage";
 import UserDashboard from "./components/user_dashboard/UserDashboard";
 import PropertiesPage from "./components/properties_page/PropertiesPage";
-import ServicesPage from "./components/services_page/ServicesPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminDashboard from "./components/admin_dashboard/AdminDashboard";
 import AdminRoute from "./components/AdminRoute";
@@ -103,16 +102,7 @@ export default function App() {
             </>
           }
         />
-        <Route
-          path="/services"
-          element={
-            <>
-              <Header user={user} />
-              <ServicesPage />
-              <Footer />
-            </>
-          }
-        />
+
         <Route
           path="/compare"
           element={

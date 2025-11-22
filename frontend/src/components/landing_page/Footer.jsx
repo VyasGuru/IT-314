@@ -44,22 +44,6 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Services */}
-          <div>
-            <h3 className="font-semibold mb-4">Services</h3>
-            <ul className="space-y-2">
-              {[
-                "Property Management",
-                "Market Analysis",
-                "Legal Services",
-              ].map((service) => (
-                <li key={service}>
-                  <a href="#" className="text-gray-600 hover:text-blue-600 transition-colors">{service}</a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {/* Newsletter */}
           <div>
             

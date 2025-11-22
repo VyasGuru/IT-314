@@ -265,9 +265,9 @@ const LandingPage = () => {
               Discover our handpicked selection of premium properties
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
             <select
-              className="border rounded-lg p-2"
+              className="w-full border rounded-lg p-2"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
             >
@@ -277,9 +277,9 @@ const LandingPage = () => {
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
             </select>
-            <div className="flex border rounded-lg overflow-hidden">
+            <div className="hidden md:flex border rounded-lg">
               <button
-                className={`p-2 ${
+                className={`p-2 rounded-l-lg ${
                   viewMode === "grid" ? "bg-gray-200" : ""
                 }`}
                 onClick={() => setViewMode("grid")}
@@ -287,7 +287,7 @@ const LandingPage = () => {
                 <Grid className="h-5 w-5" />
               </button>
               <button
-                className={`p-2 ${
+                className={`p-2 rounded-r-lg ${
                   viewMode === "list" ? "bg-gray-200" : ""
                 }`}
                 onClick={() => setViewMode("list")}
@@ -342,8 +342,7 @@ const LandingPage = () => {
             onClick={handleLoadMore}
             className="border rounded-lg px-6 py-2 hover:bg-gray-100"
           >
-            Load More Properties
-          </button>
+            Load More Properties</button>
         </div>
       </main>
 
@@ -362,3 +361,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+

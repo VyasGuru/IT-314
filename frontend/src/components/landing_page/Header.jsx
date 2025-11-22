@@ -1,9 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Menu, Phone, Mail, LogOut, GitCompare } from "lucide-react";
+import { Search, Menu, Phone, Mail, LogOut, GitCompare, X } from "lucide-react"; // Import X icon for close
 import { useAuth } from "../../contexts/AuthContext";
 import { useComparison } from "../../contexts/ComparisonContext";
+import { useState } from "react"; // Import useState
 
 export function Header({ user }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const { properties: comparedProperties } = useComparison();
@@ -12,7 +14,6 @@ export function Header({ user }) {
     { name: "Home", path: "/" },
     { name: "Properties", path: "/properties" },
     { name: "About", path: "/about" },
-    { name: "Services", path: "/services" },
     { name: "Contact", path: "/contact" },
     { name: "Compare", path: "/compare" },
   ];
@@ -22,6 +23,7 @@ export function Header({ user }) {
     try {
       await signOut();
       navigate("/");
+      setIsMobileMenuOpen(false); // Close menu on sign out
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -34,6 +36,7 @@ export function Header({ user }) {
       } else {
         navigate('/dashboard');
       }
+      setIsMobileMenuOpen(false); // Close menu on navigation
     }
   };
 
@@ -44,16 +47,16 @@ export function Header({ user }) {
         <div className="container mx-auto px-4 py-2">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
                 <Phone className="h-4 w-4" />
                 <span>+91 9993339339</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 <span>info@findmysquare.com</span>
               </div>
             </div>
-            <div className="hidden md:flex items-center gap-4">
+            <div className="flex items-center gap-4">
               {user ? (
                 <div className="flex items-center gap-3">
                   <button
@@ -103,7 +106,6 @@ export function Header({ user }) {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-8">
-            {/* 3. Wrap the logo in a Link to navigate home */}
             <Link to="/" className="flex items-center gap-2">
               <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold">FS</span>
@@ -112,11 +114,10 @@ export function Header({ user }) {
             </Link>
 
             <nav className="hidden lg:flex items-center gap-6">
-              {/* 4. Map over the new array and use Link component */}
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
-                  to={link.path} // Use `to` instead of `href`
+                  to={link.path}
                   className="text-gray-600 hover:text-blue-600 transition-colors"
                 >
                   {link.name}
@@ -146,12 +147,43 @@ export function Header({ user }) {
                 </span>
               )}
             </Link>
-            <button className="border px-2 py-1 rounded lg:hidden hover:bg-gray-200">
-              <Menu className="h-4 w-4" />
+            <button 
+              className="border px-2 py-1 rounded lg:hidden hover:bg-gray-200"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
           </div>
         </div>
       </div>
+      {isMobileMenuOpen && (
+        <div className="lg:hidden bg-gray-50 border-t">
+          <div className="container mx-auto px-4 py-4">
+            <nav className="flex flex-col gap-4">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  className="text-gray-600 hover:text-blue-600 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </nav>
+            <div className="mt-4 pt-4 border-t">
+              <div className="md:hidden flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 w-full mb-4">
+                <Search className="h-4 w-4 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Search properties..."
+                  className="border-0 bg-transparent p-0 w-full focus:outline-none focus:ring-0"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

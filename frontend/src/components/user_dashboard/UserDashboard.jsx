@@ -26,10 +26,13 @@ import {
   Mail,
   Phone,
   TrendingUp,
-  Share2
+  Share2,
+  Menu, // Import Menu icon for hamburger
+  X // Import X for close
 } from 'lucide-react';
 
 const UserDashboard = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for sidebar
   const { currentUser, userRole, signOut } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
@@ -390,7 +393,7 @@ const UserDashboard = () => {
     <>
       <div className="flex min-h-screen bg-gray-50">
         {/* Sidebar */}
-        <aside className="w-72 bg-gradient-to-b from-blue-600 to-blue-800 text-white flex flex-col fixed h-full left-0 overflow-y-auto shadow-lg rounded-r-2xl">
+        <aside className={`w-72 bg-gradient-to-b from-blue-600 to-blue-800 text-white flex-col fixed h-full left-0 overflow-y-auto shadow-lg rounded-r-2xl z-20 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out flex`}>
           <div className="p-8 text-center border-b border-white/10">
             <div className="w-20 h-20 rounded-full mx-auto mb-4 bg-white/20 flex items-center justify-center overflow-hidden border-3 border-white">
               {userData?.photoURL ? (
@@ -417,7 +420,10 @@ const UserDashboard = () => {
                 className={`w-full flex items-center gap-3 px-6 py-4 text-base cursor-pointer transition-all duration-300 relative text-left hover:bg-white/10 ${
                   activeTab === item.id ? 'bg-white/20 text-white font-semibold before:content-[""] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-white' : 'text-white/90'
                 }`}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false); // Close on selection on mobile
+                }}
               >
                 <item.icon size={20} />
                 <span>{item.label}</span>
@@ -442,7 +448,21 @@ const UserDashboard = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 pl-72 p-8 pt-20 min-h-screen">
+        <main className="flex-1 lg:pl-72 p-4 sm:p-8 pt-16 sm:pt-20 min-h-screen">
+          <button
+            className="lg:hidden fixed top-5 left-5 z-30 p-2 bg-white rounded-full shadow-md text-gray-800"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+          
+          {isSidebarOpen && (
+            <div
+              className="lg:hidden fixed inset-0 bg-black/40 z-10"
+              onClick={() => setIsSidebarOpen(false)}
+            ></div>
+          )}
+
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-800">
               {activeTab === 'overview' && 'Dashboard Overview'}
@@ -454,11 +474,11 @@ const UserDashboard = () => {
             </h1>
           </div>
 
-          <div className="bg-white rounded-xl p-8 shadow-sm">
+          <div className="bg-white rounded-xl p-4 sm:p-8 shadow-sm">
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="flex flex-col gap-8">
-                <div className="rounded-3xl bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 text-white p-8 flex flex-col lg:flex-row gap-8">
+                <div className="rounded-3xl bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 text-white p-6 sm:p-8 flex flex-col lg:flex-row gap-8">
                   <div className="flex-1">
                     <p className="text-xs uppercase tracking-[0.4em] text-white/70 font-semibold">
                       Welcome back
@@ -659,7 +679,7 @@ const UserDashboard = () => {
                           </div>
                           <span className="text-xs text-gray-400">{event.time}</span>
                         </div>
-                      ))}
+))}
                     </div>
                   </div>
                 </div>
