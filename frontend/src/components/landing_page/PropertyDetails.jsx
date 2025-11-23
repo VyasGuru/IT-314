@@ -1,12 +1,24 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, MapPin, Bed, Bath, Square, Calendar, Heart, Share, Phone, Mail, GitCompare } from "lucide-react";
+import { X, MapPin, Bed, Bath, Square, Calendar, Heart, Share, Phone, Mail, GitCompare, Star, MessageSquare } from "lucide-react";
 import { formatLocation } from "../../utils/formatLocation";
 import { useComparison } from "../../contexts/ComparisonContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { submitReview, getPropertyReviews } from "../../services/reviewApi";
 
 export function PropertyDetails({ property, isOpen, onClose }) {
   const [liked, setLiked] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [averageRating, setAverageRating] = useState(0);
+  const [totalReviews, setTotalReviews] = useState(0);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewForm, setReviewForm] = useState({
+    rating: 0,
+    comment: ""
+  });
+  const [reviewError, setReviewError] = useState("");
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { properties: comparedProperties, addProperty, removeProperty, updatingId } = useComparison();
@@ -38,6 +50,105 @@ export function PropertyDetails({ property, isOpen, onClose }) {
       console.error("Comparison error:", err);
       alert(err?.response?.data?.message || "Unable to update comparison right now.");
     }
+  };
+
+  // Fetch reviews when property details are opened
+  useEffect(() => {
+    if (isOpen && propertyId) {
+      fetchReviews();
+    }
+  }, [isOpen, propertyId]);
+
+  const fetchReviews = async () => {
+    if (!propertyId) return;
+    setLoadingReviews(true);
+    try {
+      const response = await getPropertyReviews(propertyId);
+      if (response?.data) {
+        setReviews(response.data.reviews || []);
+        setAverageRating(response.data.averageRating || 0);
+        setTotalReviews(response.data.totalReviews || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      // Don't show error if reviews don't exist yet
+      if (error.response?.status !== 404) {
+        setReviews([]);
+      }
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
+  const handleReviewClick = () => {
+    if (!currentUser) {
+      navigate("/login");
+      return;
+    }
+    setShowReviewModal(true);
+    setReviewForm({ rating: 0, comment: "" });
+    setReviewError("");
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!propertyId) return;
+
+    if (reviewForm.rating === 0) {
+      setReviewError("Please select a rating");
+      return;
+    }
+
+    setSubmittingReview(true);
+    setReviewError("");
+
+    try {
+      await submitReview(propertyId, reviewForm.rating, reviewForm.comment);
+      setShowReviewModal(false);
+      setReviewForm({ rating: 0, comment: "" });
+      // Refresh reviews
+      await fetchReviews();
+      alert("Review submitted successfully!");
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      if (error.response?.data?.message) {
+        const errorMessage = error.response.data.message;
+        // Check if it's a duplicate review error
+        if (errorMessage.includes("already reviewed")) {
+          setReviewError("You have already reviewed this property.");
+        } else {
+          setReviewError(errorMessage);
+        }
+      } else {
+        setReviewError("Failed to submit review. Please try again.");
+      }
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const renderStars = (rating, interactive = false, onStarClick = null) => {
+    return (
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type={interactive ? "button" : undefined}
+            onClick={interactive && onStarClick ? () => onStarClick(star) : undefined}
+            className={interactive ? "cursor-pointer" : "cursor-default"}
+            disabled={!interactive || submittingReview}
+          >
+            <Star
+              className={`h-5 w-5 ${
+                star <= rating
+                  ? "fill-yellow-400 text-yellow-400"
+                  : "text-gray-300"
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+    );
   };
 
   const getStatusBadge = () => {
@@ -105,6 +216,13 @@ export function PropertyDetails({ property, isOpen, onClose }) {
               {isCompared ? "In Compare" : "Add to Compare"}
             </button>
             <button
+              onClick={handleReviewClick}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Review
+            </button>
+            <button
               onClick={() => setLiked(!liked)}
               className={`p-2 rounded-full border ${liked ? "border-red-500 text-red-500" : "border-gray-300 text-gray-500"}`}
             >
@@ -165,6 +283,75 @@ export function PropertyDetails({ property, isOpen, onClose }) {
 
         <hr className="my-6 border-gray-200" />
 
+        {/* Reviews Section */}
+        <hr className="my-6 border-gray-200" />
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold mb-1">Reviews</h3>
+              <div className="flex items-center gap-2">
+                {renderStars(Math.round(averageRating))}
+                <span className="text-sm text-gray-600">
+                  {averageRating > 0 ? averageRating.toFixed(1) : "No"} rating
+                  {totalReviews > 0 && ` (${totalReviews} ${totalReviews === 1 ? "review" : "reviews"})`}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={handleReviewClick}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <MessageSquare className="h-4 w-4" />
+              Write Review
+            </button>
+          </div>
+
+          {loadingReviews ? (
+            <div className="text-center py-8 text-gray-500">Loading reviews...</div>
+          ) : reviews.length > 0 ? (
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <div key={review._id || review.id} className="border rounded-lg p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        {review.reviewerId?.photo ? (
+                          <img
+                            src={review.reviewerId.photo}
+                            alt={review.reviewerId.name}
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-blue-600 font-semibold">
+                            {review.reviewerId?.name?.charAt(0)?.toUpperCase() || "U"}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800">
+                          {review.reviewerId?.name || "Anonymous"}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div>{renderStars(review.rating)}</div>
+                  </div>
+                  {review.comment && (
+                    <p className="text-gray-700 mt-2">{review.comment}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500 border rounded-lg">
+              <MessageSquare className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+              <p>No reviews yet. Be the first to review this property!</p>
+            </div>
+          )}
+        </div>
+
         {/* Agent Info */}
         {property.agent && (
           <div>
@@ -192,6 +379,72 @@ export function PropertyDetails({ property, isOpen, onClose }) {
           </div>
         )}
       </div>
+
+      {/* Review Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 relative">
+            <button
+              onClick={() => {
+                setShowReviewModal(false);
+                setReviewForm({ rating: 0, comment: "" });
+                setReviewError("");
+              }}
+              className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h3 className="text-xl font-bold mb-4">Write a Review</h3>
+            <form onSubmit={handleReviewSubmit}>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Rating *
+                </label>
+                {renderStars(reviewForm.rating, true, (star) => {
+                  setReviewForm({ ...reviewForm, rating: star });
+                })}
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Comment
+                </label>
+                <textarea
+                  value={reviewForm.comment}
+                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"
+                  rows="4"
+                  placeholder="Share your experience with this property..."
+                />
+              </div>
+              {reviewError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm">{reviewError}</p>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReviewModal(false);
+                    setReviewForm({ rating: 0, comment: "" });
+                    setReviewError("");
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReview || reviewForm.rating === 0}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submittingReview ? "Submitting..." : "Submit Review"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

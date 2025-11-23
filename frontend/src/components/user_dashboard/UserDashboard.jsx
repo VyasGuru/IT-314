@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../landing_page/Header';
-import { getUserProfile } from '../../services/userApi';
+import { getUserProfile, updateUserDetails, resetPassword } from '../../services/userApi';
 import { getSavedListings } from '../../services/savedListingApi';
 import { getComparedProperties } from '../../services/comparisonApi';
 import { getProperties } from '../../services/propertyApi';
@@ -21,6 +21,8 @@ import {
   Trash2,
   Plus,
   Eye,
+  EyeOff,
+  Lock,
   MessageSquare,
   Calendar,
   Mail,
@@ -42,6 +44,26 @@ const UserDashboard = () => {
   const [comparedProperties, setComparedProperties] = useState([]);
   const [listedProperties, setListedProperties] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    phone: '',
+    photo: null
+  });
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
   const stats = [
     {
       label: 'Saved Properties',
@@ -144,11 +166,18 @@ const UserDashboard = () => {
           setUserData({
             displayName: backendUser.name || currentUser?.displayName || 'User',
             email: backendUser.email || currentUser?.email || '',
-            photoURL: currentUser?.photoURL || '',
+            photoURL: backendUser.photo || currentUser?.photoURL || '',
             phone: backendUser.phone || '',
             joinedDate: backendUser.createdAt || new Date().toISOString(),
             verified: backendUser.verified || false
           });
+          // Set form initial values
+          setProfileForm({
+            name: backendUser.name || currentUser?.displayName || '',
+            phone: backendUser.phone || '',
+            photo: null
+          });
+          setPhotoPreview(backendUser.photo || currentUser?.photoURL || null);
         } else {
           // Fallback to Firebase user data if backend profile not available
           setUserData({
@@ -159,6 +188,12 @@ const UserDashboard = () => {
             joinedDate: new Date().toISOString(),
             verified: false
           });
+          setProfileForm({
+            name: currentUser?.displayName || '',
+            phone: '',
+            photo: null
+          });
+          setPhotoPreview(currentUser?.photoURL || null);
         }
       } catch (profileError) {
         console.error('Error fetching user profile:', profileError);
@@ -171,6 +206,12 @@ const UserDashboard = () => {
           joinedDate: new Date().toISOString(),
           verified: false
         });
+        setProfileForm({
+          name: currentUser?.displayName || '',
+          phone: '',
+          photo: null
+        });
+        setPhotoPreview(currentUser?.photoURL || null);
       }
 
       // Fetch saved listings
@@ -371,6 +412,119 @@ const UserDashboard = () => {
     alert('Add listing functionality will be implemented soon!');
   };
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB');
+        return;
+      }
+      setProfileForm({ ...profileForm, photo: file });
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    try {
+      const response = await updateUserDetails(
+        profileForm.name,
+        profileForm.phone,
+        profileForm.photo
+      );
+      
+      if (response?.data) {
+        const updatedUser = response.data;
+        setUserData({
+          ...userData,
+          displayName: updatedUser.name || userData.displayName,
+          phone: updatedUser.phone || userData.phone,
+          photoURL: updatedUser.photo || userData.photoURL
+        });
+        setPhotoPreview(updatedUser.photo || photoPreview);
+        alert('Profile updated successfully!');
+        // Refresh user data
+        await fetchUserData();
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    
+    // Validation
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError('All password fields are required');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('New password and confirm password do not match');
+      return;
+    }
+
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      setPasswordError('New password must be different from current password');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      const response = await resetPassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword
+      );
+      
+      if (response?.message) {
+        setPasswordSuccess('Password updated successfully!');
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        // Clear success message after 5 seconds
+        setTimeout(() => {
+          setPasswordSuccess('');
+        }, 5000);
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      if (error.response?.data?.message) {
+        setPasswordError(error.response.data.message);
+      } else if (error.response?.status === 401) {
+        setPasswordError('Invalid current password. Please try again.');
+      } else {
+        setPasswordError('Failed to update password. Please try again.');
+      }
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
   const headerUser = currentUser
     ? {
         name: currentUser.displayName || currentUser.email,
@@ -396,13 +550,13 @@ const UserDashboard = () => {
         <aside className={`w-72 bg-gradient-to-b from-blue-600 to-blue-800 text-white flex-col fixed h-full left-0 overflow-y-auto shadow-lg rounded-r-2xl z-20 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out flex`}>
           <div className="p-8 text-center border-b border-white/10">
             <div className="w-20 h-20 rounded-full mx-auto mb-4 bg-white/20 flex items-center justify-center overflow-hidden border-3 border-white">
-              {userData?.photoURL ? (
-                <img src={userData.photoURL} alt={userData.displayName} className="w-full h-full object-cover" />
+              {(userData?.photoURL || photoPreview) ? (
+                <img src={photoPreview || userData.photoURL} alt={userData?.displayName || 'User'} className="w-full h-full object-cover" />
               ) : (
                 <User size={40} />
               )}
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">{userData?.displayName}</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">{userData?.displayName || 'User'}</h3>
             <p className="text-sm text-white/80">{userRole === 'admin' ? 'Administrator' : 'User'}</p>
           </div>
 
@@ -912,20 +1066,26 @@ const UserDashboard = () => {
             {/* Settings Tab */}
             {activeTab === 'settings' && (
               <div className="flex flex-col gap-8">
-                <div className="pb-8 border-b border-gray-200">
+                <form onSubmit={handleProfileUpdate} className="pb-8 border-b border-gray-200">
                   <h2 className="text-xl font-bold text-gray-800 mb-6">Profile Settings</h2>
                   <div className="flex gap-8 flex-wrap">
                     <div className="flex flex-col items-center gap-4">
                       <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-4 border-blue-600">
-                        {userData?.photoURL ? (
-                          <img src={userData.photoURL} alt={userData.displayName} className="w-full h-full object-cover" />
+                        {photoPreview ? (
+                          <img src={photoPreview} alt={profileForm.name || 'User'} className="w-full h-full object-cover" />
                         ) : (
                           <User size={48} className="text-gray-400" />
                         )}
                       </div>
-                      <button className="px-4 py-2 bg-white text-blue-600 border-2 border-blue-600 rounded-lg font-medium transition-all duration-300 hover:bg-blue-600 hover:text-white">
+                      <label className="px-4 py-2 bg-white text-blue-600 border-2 border-blue-600 rounded-lg font-medium transition-all duration-300 hover:bg-blue-600 hover:text-white cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoChange}
+                          className="hidden"
+                        />
                         Change Photo
-                      </button>
+                      </label>
                     </div>
 
                     <div className="flex-1 flex flex-col gap-4 min-w-[300px]">
@@ -936,8 +1096,10 @@ const UserDashboard = () => {
                         </label>
                         <input
                           type="text"
-                          defaultValue={userData?.displayName}
+                          value={profileForm.name}
+                          onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
                           className="px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white"
+                          required
                         />
                       </div>
                       <div className="flex flex-col gap-2">
@@ -947,9 +1109,11 @@ const UserDashboard = () => {
                         </label>
                         <input
                           type="email"
-                          defaultValue={userData?.email}
-                          className="px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white"
+                          value={userData?.email || ''}
+                          disabled
+                          className="px-4 py-3 border border-gray-300 rounded-lg text-gray-500 bg-gray-100 cursor-not-allowed"
                         />
+                        <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                       </div>
                       <div className="flex flex-col gap-2">
                         <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
@@ -958,12 +1122,121 @@ const UserDashboard = () => {
                         </label>
                         <input
                           type="tel"
-                          defaultValue={userData?.phone}
+                          value={profileForm.phone}
+                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                           className="px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white"
+                          placeholder="Enter 10-digit phone number"
+                          pattern="[0-9]{10}"
+                          maxLength="10"
                         />
                       </div>
+                      <button
+                        type="submit"
+                        disabled={isUpdating}
+                        className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isUpdating ? 'Saving...' : 'Save Changes'}
+                      </button>
                     </div>
                   </div>
+                </form>
+
+                <div className="pb-8 border-b border-gray-200">
+                  <h2 className="text-xl font-bold text-gray-800 mb-6">Change Password</h2>
+                  <form onSubmit={handlePasswordReset} className="space-y-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                        <Lock size={16} />
+                        Current Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPasswords.current ? "text" : "password"}
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white pr-10"
+                          placeholder="Enter your current password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPasswords.current ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                        <Lock size={16} />
+                        New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPasswords.new ? "text" : "password"}
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white pr-10"
+                          placeholder="Enter your new password (min 6 characters)"
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPasswords.new ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                        <Lock size={16} />
+                        Confirm New Password
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPasswords.confirm ? "text" : "password"}
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white pr-10"
+                          placeholder="Confirm your new password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPasswords.confirm ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {passwordError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                        <p className="text-red-600 text-sm">{passwordError}</p>
+                      </div>
+                    )}
+
+                    {passwordSuccess && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p className="text-green-600 text-sm">{passwordSuccess}</p>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isResettingPassword}
+                      className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isResettingPassword ? 'Updating Password...' : 'Update Password'}
+                    </button>
+                  </form>
                 </div>
 
                 <div className="pb-8 border-b border-gray-200">

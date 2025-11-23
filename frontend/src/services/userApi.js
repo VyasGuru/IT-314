@@ -63,11 +63,26 @@ export const forgotPassword = async (email) => {
   return response.data;
 };
 
-// Update user details - Note: This endpoint may need to be added to backend routes
-export const updateUserDetails = async (name, phone) => {
-  const response = await api.patch("/users/update", {
-    name,
-    phone,
+// Update user details - supports photo upload
+export const updateUserDetails = async (name, phone, photoFile = null) => {
+  const formData = new FormData();
+  
+  if (name) {
+    formData.append("name", name);
+  }
+  
+  if (phone) {
+    formData.append("phone", phone);
+  }
+  
+  if (photoFile) {
+    formData.append("photo", photoFile);
+  }
+
+  const response = await api.patch("/users/update", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
   });
   return response.data;
 };

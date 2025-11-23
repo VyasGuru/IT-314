@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const reviewSchema = new mongoose.Schema(
     {
-        reviewerFirebaseUid: {
+        reviewerId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,

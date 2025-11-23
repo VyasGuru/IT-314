@@ -5,6 +5,8 @@ import { User } from "../models/user.models.js";
 import admin from "firebase-admin";
 import fetch from "node-fetch"; //for reset password and call firebase REST API
 import { sendEmail } from "../utils/sendMail.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+import fs from "fs";
 
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
@@ -356,10 +358,39 @@ const updateUserDetails = asyncHandler(async (req, res) => {
             throw new ApiError(404, "User not found");
         }
 
+        // Handle photo upload if provided
+        let photoUrl = null;
+        if (req.file) {
+            const localFilePath = req.file.path;
+            
+            // Upload to Cloudinary
+            const uploadResponse = await uploadOnCloudinary(localFilePath);
+            
+            // Delete local file after upload
+            if (fs.existsSync(localFilePath)) {
+                fs.unlinkSync(localFilePath);
+            }
+
+            if (!uploadResponse || !uploadResponse.url) {
+                throw new ApiError(500, "Failed to upload photo to Cloudinary");
+            }
+
+            photoUrl = uploadResponse.url;
+
+            // Delete old photo from Cloudinary if it exists
+            if (user.photo) {
+                await deleteFromCloudinary(user.photo);
+            }
+
+            user.photo = photoUrl;
+        }
+
+        // Update name if provided
         if (name) {
             user.name = name;
         }
 
+        // Update phone if provided
         if (phone) {
             user.phone = phone;
         }
@@ -370,6 +401,10 @@ const updateUserDetails = asyncHandler(async (req, res) => {
             new ApiResponse(200, user, "User details updated successfully")
         );
     } catch (err) {
+        // Clean up uploaded file if error occurred
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
         throw new ApiError(500, `Error while updating user details. Error is : ${err.message}`);
     }
 });
