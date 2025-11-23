@@ -49,14 +49,14 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
         if (searchQuery) {
             const searchRegex = { $regex: searchQuery, $options: "i" };
             filter.$or = [
-                { title: searchRegex },
-                { description: searchRegex },
+                { "title": searchRegex },
+                { "description": searchRegex },
                 { "location.city": searchRegex },
                 { "location.state": searchRegex },
                 { "location.street": searchRegex },
                 { "location.locality": searchRegex },
                 { "location.zipCode": searchRegex },
-                { propertyType: searchRegex }
+                { "propertyType": searchRegex }
             ];
         }
 
@@ -141,15 +141,7 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
 
         // Property type filter
         if (propertyType) {
-            const typeMapping = {
-                "House": "residential",
-                "Apartment": "residential",
-                "Villa": "residential",
-                "Commercial": "commercial",
-                "Land": "land",
-            };
-            const backendType = typeMapping[propertyType] || propertyType;
-            filter.propertyType = backendType;
+            filter.propertyType = propertyType;
         }
 
         // Year built filter
