@@ -9,7 +9,8 @@ import {
 }
 from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
-import { googleLogin, loginUser, registerUser as registerUserApi, getUserProfile } from "../services/userApi";
+import { googleLogin, loginUser, registerUser as registerUserApi, getUserProfile, logoutUser } from "../services/userApi";
+import { clearAllComparisonStorage } from "./ComparisonContext";
 
 const AuthContext = createContext({});
 
@@ -103,8 +104,34 @@ export const AuthProvider = ({ children }) => {
 
 
   const signOut = async () => {
-    await firebaseSignOut(auth);
-    setUserRole(null);
+    try {
+      // Call backend logout API to revoke refresh tokens
+      const token = currentUser ? await currentUser.getIdToken() : null;
+      if (token) {
+        try {
+          await logoutUser();
+        } catch (error) {
+          console.error("Error calling backend logout:", error);
+        }
+      }
+      
+      // Clear all comparison data from localStorage
+      clearAllComparisonStorage();
+      
+      // Sign out from Firebase
+      await firebaseSignOut(auth);
+      setUserRole(null);
+
+    } 
+    
+    catch (error) {
+      console.error("Error during sign out:", error);
+      // Still clear comparison storage and sign out even if there's an error
+      clearAllComparisonStorage();
+      await firebaseSignOut(auth);
+      setUserRole(null);
+      throw error;
+    }
   };
 
   const value = {
