@@ -4,10 +4,12 @@ import { X, MapPin, Bed, Bath, Square, Calendar, Heart, Share, Phone, Mail, GitC
 import { formatLocation } from "../../utils/formatLocation";
 import { useComparison } from "../../contexts/ComparisonContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useSavedListings } from "../../contexts/SavedListingsContext"; // Import useSavedListings
 import { submitReview, getPropertyReviews } from "../../services/reviewApi";
 
 export function PropertyDetails({ property, isOpen, onClose }) {
-  const [liked, setLiked] = useState(false);
+  // Remove local liked state
+  // const [liked, setLiked] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [averageRating, setAverageRating] = useState(0);
@@ -22,12 +24,14 @@ export function PropertyDetails({ property, isOpen, onClose }) {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { properties: comparedProperties, addProperty, removeProperty, updatingId } = useComparison();
+  const { isSaved, toggleSaved } = useSavedListings(); // Use SavedListingsContext
 
   if (!property || !isOpen) return null;
   
   // Format location if it's an object
   const locationString = formatLocation(property.location);
   const propertyId = property._id || property.id;
+  const liked = isSaved(propertyId); // Get liked status from context
   const isCompared = useMemo(
     () => comparedProperties.some((item) => (item._id || item.id) === propertyId),
     [comparedProperties, propertyId]
@@ -50,6 +54,15 @@ export function PropertyDetails({ property, isOpen, onClose }) {
       console.error("Comparison error:", err);
       alert(err?.response?.data?.message || "Unable to update comparison right now.");
     }
+  };
+
+  const handleToggleLike = async () => {
+    if (!propertyId) return;
+    if (!currentUser) {
+      navigate("/login");
+      return;
+    }
+    await toggleSaved(propertyId);
   };
 
   // Fetch reviews when property details are opened
@@ -223,10 +236,10 @@ export function PropertyDetails({ property, isOpen, onClose }) {
               Review
             </button>
             <button
-              onClick={() => setLiked(!liked)}
+              onClick={handleToggleLike} // Use the new handler
               className={`p-2 rounded-full border ${liked ? "border-red-500 text-red-500" : "border-gray-300 text-gray-500"}`}
             >
-              <Heart className="h-4 w-4" />
+              <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
             </button>
             <button className="p-2 rounded-full border border-gray-300 text-gray-500">
               <Share className="h-4 w-4" />

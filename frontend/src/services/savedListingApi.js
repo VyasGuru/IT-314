@@ -6,7 +6,17 @@ import api from "./api";
  */
 
 // Save a listing
-export const saveListing = async (listingId) => {
+export const saveListing = async (listingIdOrObj) => {
+  // Accept either a raw id (string) or an object like { listingId: id } and normalize it
+  const listingId =
+    typeof listingIdOrObj === "string" || typeof listingIdOrObj === "number"
+      ? listingIdOrObj
+      : listingIdOrObj?.listingId ?? listingIdOrObj?._id;
+
+  if (!listingId) {
+    throw new Error("saveListing requires a listingId");
+  }
+
   const response = await api.post("/saved-listings", {
     listingId,
   });
@@ -14,8 +24,8 @@ export const saveListing = async (listingId) => {
 };
 
 // Remove a saved listing
-export const removeSavedListing = async (listingId) => {
-  const response = await api.delete(`/saved-listings/${listingId}`);
+export const removeSavedListing = async (propertyId) => {
+  const response = await api.delete(`/saved-listings/${propertyId}`);
   return response.data;
 };
 
@@ -24,4 +34,11 @@ export const getSavedListings = async () => {
   const response = await api.get("/saved-listings");
   return response.data;
 };
+
+// Get all saved listing IDs for current user
+export const getSavedListingIds = async () => {
+  const response = await api.get("/saved-listings/ids");
+  return response.data;
+};
+
 
