@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, MapPin, Bed, Bath, Square, Calendar, Heart, Share, Phone, Mail, GitCompare, Star, MessageSquare } from "lucide-react";
 import { formatLocation } from "../../utils/formatLocation";
@@ -27,7 +27,7 @@ export function PropertyDetails({ property, isOpen, onClose }) {
   const { isSaved, toggleSaved } = useSavedListings(); // Use SavedListingsContext
 
   if (!property || !isOpen) return null;
-  
+
   // Format location if it's an object
   const locationString = formatLocation(property.location);
   const propertyId = property._id || property.id;
@@ -152,11 +152,10 @@ export function PropertyDetails({ property, isOpen, onClose }) {
             disabled={!interactive || submittingReview}
           >
             <Star
-              className={`h-5 w-5 ${
-                star <= rating
+              className={`h-5 w-5 ${star <= rating
                   ? "fill-yellow-400 text-yellow-400"
                   : "text-gray-300"
-              }`}
+                }`}
             />
           </button>
         ))}
@@ -212,18 +211,17 @@ export function PropertyDetails({ property, isOpen, onClose }) {
         {/* Price and Actions */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
           <div>
-            <p className="text-3xl font-bold text-blue-600">{property.price}</p>
+            <p className="text-3xl font-bold text-blue-600">₹{property.price ? Number(property.price).toLocaleString('en-IN') : 'N/A'}</p>
             <p className="text-gray-500">{property.propertyType}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleComparisonToggle}
               disabled={isUpdating}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isCompared
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isCompared
                   ? "bg-green-600 text-white hover:bg-green-700"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+                }`}
             >
               <GitCompare className="h-4 w-4" />
               {isCompared ? "In Compare" : "Add to Compare"}

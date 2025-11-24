@@ -6,17 +6,17 @@ import { useComparison } from "../../contexts/ComparisonContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSavedListings } from "../../contexts/SavedListingsContext";
 
-export function PropertyCard({ 
-  id, 
+export function PropertyCard({
+  id,
   _id,
-  title, 
-  price, 
-  location, 
-  bedrooms, 
-  bathrooms, 
+  title,
+  price,
+  location,
+  bedrooms,
+  bathrooms,
   area,
   size,
-  image, 
+  image,
   images = [],
   status,
   featured = false,
@@ -116,7 +116,7 @@ export function PropertyCard({
 
   return (
     <div className="group overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer bg-white">
-      
+
       {/* Image Section */}
       <div className="relative">
         <div className="aspect-video overflow-hidden">
@@ -159,7 +159,7 @@ export function PropertyCard({
             <MapPin className="h-4 w-4 mr-1" />
             <span className="text-sm">{locationString}</span>
           </div>
-          <p className="text-2xl font-bold text-blue-600">{price}</p>
+          <p className="text-2xl font-bold text-blue-600">₹{price ? Number(price).toLocaleString('en-IN') : 'N/A'}</p>
         </div>
 
         <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
@@ -180,20 +180,19 @@ export function PropertyCard({
         {/* Buttons */}
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
-  onClick={handleViewDetails}
-  className="w-full flex items-center justify-center gap-2 border border-blue-600 text-blue-600 rounded-lg px-4 py-2 hover:bg-blue-50 transition-colors"
->
-  <Eye className="h-4 w-4" />
-  View Details
-</button>
+            onClick={handleViewDetails}
+            className="w-full flex items-center justify-center gap-2 border border-blue-600 text-blue-600 rounded-lg px-4 py-2 hover:bg-blue-50 transition-colors"
+          >
+            <Eye className="h-4 w-4" />
+            View Details
+          </button>
 
           <button
             onClick={handleComparisonToggle}
-            className={`w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors ${
-              isCompared
+            className={`w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors ${isCompared
                 ? "bg-green-600 text-white hover:bg-green-700"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
+              }`}
             disabled={isUpdating}
           >
             <GitCompare className="h-4 w-4" />
