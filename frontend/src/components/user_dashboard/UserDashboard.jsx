@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../landing_page/Header';
+import { PropertyDetails } from '../landing_page/PropertyDetails';
 import { getUserProfile, updateUserDetails, resetPassword } from '../../services/userApi';
-import { getSavedListings } from '../../services/savedListingApi';
+import { getSavedListings, removeSavedListing } from '../../services/savedListingApi';
 import { getComparedProperties } from '../../services/comparisonApi';
 import { getProperties } from '../../services/propertyApi';
 import { formatLocation } from '../../utils/formatLocation';
@@ -64,6 +65,9 @@ const UserDashboard = () => {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  
 
 
   useEffect(() => {
@@ -134,38 +138,43 @@ const UserDashboard = () => {
         setPhotoPreview(currentUser?.photoURL || null);
       }
 
-      // Fetch saved listings
       try {
-        const savedResponse = await getSavedListings();
-        if (savedResponse?.data && Array.isArray(savedResponse.data)) {
-          // Transform saved listings data to match component format
-          // Backend returns: SavedListing with listingId populated, which has propertyId populated
-          const transformedSaved = savedResponse.data.map((item) => {
-            const listing = item.listingId || item.listing;
-            const property = listing?.propertyId || listing?.property || {};
+  const savedResponse = await getSavedListings();
+  const savedArray = savedResponse?.data;
 
-            return {
-              id: item._id || item.id,
-              listingId: listing?._id || item.listingId,
-              property: property,
-              title: property?.title || 'Property',
-              price: property?.price || 'N/A',
-              location: property?.location?.city
-                ? `${property.location.city}, ${property.location.state || ''}`
-                : 'Location N/A',
-              image: property?.images?.[0] || 'https://via.placeholder.com/400',
-              bedrooms: property?.bedrooms || 0,
-              bathrooms: property?.bathrooms || 0,
-              area: property?.size ? `${property.size} sq ft` : '0 sq ft',
-              savedDate: item.createdAt || item.savedAt || new Date().toISOString()
-            };
-          });
-          setSavedProperties(transformedSaved);
-        }
-      } catch (savedError) {
-        console.error('Error fetching saved listings:', savedError);
-        setSavedProperties([]);
-      }
+  if (Array.isArray(savedArray)) {
+    const transformedSaved = savedArray.map((item) => {
+      const listing = item.listingId || item.listing;
+      const property = listing; 
+
+      return {
+        id: item._id,               
+        listingId: listing._id,      
+        property,                    
+
+        
+        title: property.title,
+        price: property.price,
+        location: property.location?.city
+          ? `${property.location.city}, ${property.location.state || ''}`
+          : "Location N/A",
+        image: property.images?.[0] || "https://via.placeholder.com/400",
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        area: property.size ? `${property.size} sq ft` : "0 sq ft",
+        savedDate: item.createdAt,
+      };
+    });
+
+    setSavedProperties(transformedSaved);
+  }
+} catch (savedError) {
+  console.error("Error fetching saved listings:", savedError);
+  setSavedProperties([]);
+}
+
+
+
 
       // Fetch compared properties
       try {
@@ -233,6 +242,31 @@ const UserDashboard = () => {
     }
   };
 
+  const handleUnsave = async (savedItemId) => {
+  try {
+    await removeSavedListing(savedItemId);
+
+    // forcing hard reload as not using context right now
+    window.location.reload();
+
+  } catch (err) {
+    console.error("Error unsaving property:", err);
+  }
+};
+
+
+
+const handleViewDetails = (propertyId) => {
+  const saved = savedProperties.find((p) => p.listingId === propertyId);
+
+  if (!saved) return;
+
+  setSelectedProperty(saved.property); // full property object
+  setIsDetailsOpen(true);
+};
+
+
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -242,39 +276,9 @@ const UserDashboard = () => {
     }
   };
 
-  const handleRemoveSaved = async (listingId) => {
-    try {
-      const { removeSavedListing } = await import('../../services/savedListingApi');
-      await removeSavedListing(listingId);
-      // Refresh saved listings
-      const savedResponse = await getSavedListings();
-      if (savedResponse?.data && Array.isArray(savedResponse.data)) {
-        const transformedSaved = savedResponse.data.map((item) => {
-          const listing = item.listingId || item.listing;
-          const property = listing?.propertyId || listing?.property || {};
+  
 
-          return {
-            id: item._id || item.id,
-            listingId: listing?._id || item.listingId,
-            property: property,
-            title: property?.title || 'Property',
-            price: property?.price || 'N/A',
-            location: property?.location?.city
-              ? `${property.location.city}, ${property.location.state || ''}`
-              : 'Location N/A',
-            image: property?.images?.[0] || 'https://via.placeholder.com/400',
-            bedrooms: property?.bedrooms || 0,
-            bathrooms: property?.bathrooms || 0,
-            area: property?.size ? `${property.size} sq ft` : '0 sq ft',
-            savedDate: item.createdAt || item.savedAt || new Date().toISOString()
-          };
-        });
-        setSavedProperties(transformedSaved);
-      }
-    } catch (error) {
-      console.error('Error removing saved listing:', error);
-    }
-  };
+  
 
   const handleRemoveComparison = async (propertyId) => {
     try {
@@ -560,7 +564,7 @@ const UserDashboard = () => {
                           <div className="relative w-full h-48 overflow-hidden group">
                             <img src={property.image} alt={property.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                             <button
-                              onClick={() => handleRemoveSaved(property.listingId || property.id)}
+                              onClick={() => handleUnsave(property.listingId || property.id)}
                               className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white text-pink-600 flex items-center justify-center transition-all duration-300 shadow-md hover:bg-pink-600 hover:text-white hover:scale-110"
                             >
                               <Heart size={20} fill="currentColor" />
@@ -579,7 +583,9 @@ const UserDashboard = () => {
                               <span className="text-sm text-gray-600">{property.area}</span>
                             </div>
                             <p className="text-xs text-gray-400 mb-4">Saved on {property.savedDate}</p>
-                            <button className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+                            <button
+                              onClick={() => handleViewDetails(property.listingId || property.id)}
+                              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
                               View Details
                             </button>
                           </div>
@@ -1002,6 +1008,16 @@ const UserDashboard = () => {
           </div >
         </main >
       </div >
+      {isDetailsOpen && selectedProperty && (
+  <PropertyDetails
+    property={selectedProperty}
+    isOpen={isDetailsOpen}
+    onClose={() => {
+      setIsDetailsOpen(false);
+      setSelectedProperty(null);
+    }}
+  />
+)}
     </>
   );
 };
