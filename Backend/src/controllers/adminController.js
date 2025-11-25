@@ -63,7 +63,7 @@ export async function classifySingleReview(req, res) {
     const { comment, targetType, targetId, reviewerFirebaseUid, rating } = req.body;
 
     // basic validation
-    if (!comment) return res.status(400).json({ message: "Comment required" });
+    if (!comment || comment.trim().length === 0) return res.status(400).json({ message: "Comment required" });
     if (!targetType || !targetId || !reviewerFirebaseUid) {
       return res.status(400).json({ message: "targetType, targetId, reviewerFirebaseUid required" });
     }
@@ -73,7 +73,7 @@ export async function classifySingleReview(req, res) {
 
     // persist review
     const newReview = new Review({
-      comment,
+      comment: comment.trim(),
       targetType,
       targetId,
       reviewerFirebaseUid,
@@ -81,13 +81,12 @@ export async function classifySingleReview(req, res) {
       isAbusive: result.isAbusive
     });
 
-    await newReview.save();
-
+    const savedReview = await newReview.save(); // Get the result of save()
     res.status(201).json({
-      message: "Review saved",
-      review: newReview,
-      moderation: result
-    });
+    message: "Review saved", 
+    review: savedReview,  // Use the returned saved document
+    moderation: result
+});
   } catch (error) {
     console.error("Error classifying review:", error);
     res.status(500).json({ message: "Error processing review", error: error.message });
