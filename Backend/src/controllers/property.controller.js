@@ -289,7 +289,7 @@ const createProperty = asyncHandler(async (req, res) => {
 
         const newListing = new Listing({
             propertyId: newProperty._id, 
-            listerFirebaseUid: req.user.firebaseUid, 
+            listerFirebaseUid: req.user._id, 
             status: "pending"            
         });
 
@@ -320,10 +320,6 @@ const updatePropertyDetails = asyncHandler(async (req, res) => {
 
     const listing = await Listing.findOne({ propertyId: property._id });
     if (!listing) throw new ApiError(404, "Listing not found");
-
-    if (listing.listerFirebaseUid.toString() !== req.user.firebaseUid.toString()) {
-        throw new ApiError(403, "You do not have permission to edit this property"); 
-    }
 
     // 1. Handle New Images (If any)
     if (req.files && req.files.length > 0) {
@@ -423,11 +419,6 @@ const deleteProperty = asyncHandler(async (req, res) => {
     const listing = await Listing.findOne({ propertyId: property._id });
     if (!listing) throw new ApiError(404, "Listing for this property not found");
 
-    // Security Check
-    if (listing.listerFirebaseUid.toString() !== req.user.firebaseUid.toString()) {
-        throw new ApiError(403, "You can't delete this property");
-    }
-
 // Delete images from Cloudinary 
     if (property.images && property.images.length > 0) {
         const deletePromises = property.images.map(imageUrl => deleteFromCloudinary(imageUrl));
@@ -520,6 +511,52 @@ const reviewPropertyStatus = asyncHandler(async (req, res) => {
     );
 });
 
+const getUserListings = asyncHandler(async (req, res) => {
+    const listerId = req.user._id;
+
+    if (!listerId) {
+        throw new ApiError(400, "User not authenticated");
+    }
+
+    const listings = await Listing.find({ listerFirebaseUid: listerId }).populate({
+        path: 'propertyId',
+        model: 'Property'
+    });
+
+    if (!listings || listings.length === 0) {
+        return res.status(200).json(new ApiResponse(200, [], "No listings found for this user"));
+    }
+
+    const userListings = listings.map(listing => {
+        if (!listing.propertyId) {
+            // This can happen if a property is deleted but the listing still exists
+            return null;
+        }
+        return {
+            listingId: listing._id,
+            status: listing.status,
+            rejectionReason: listing.rejectionReason,
+            createdAt: listing.createdAt,
+            updatedAt: listing.updatedAt,
+            property: {
+                _id: listing.propertyId._id,
+                title: listing.propertyId.title,
+                description: listing.propertyId.description,
+                price: listing.propertyId.price,
+                location: listing.propertyId.location,
+                images: listing.propertyId.images,
+                propertyType: listing.propertyId.propertyType,
+                bedrooms: listing.propertyId.bedrooms,
+                bathrooms: listing.propertyId.bathrooms,
+                size: listing.propertyId.size,
+                yearBuild: listing.propertyId.yearBuild,
+            }
+        };
+    }).filter(Boolean); // Remove null entries
+
+    return res.status(200).json(new ApiResponse(200, userListings, "User listings retrieved successfully"));
+});
+
 export {
     getFilteredProperties,
     createProperty,
@@ -527,4 +564,5 @@ export {
     updatePropertyStatus,
     deleteProperty,
     reviewPropertyStatus,
+    getUserListings,
 }

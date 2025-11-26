@@ -3,7 +3,8 @@ import { getFilteredProperties,
          createProperty,
          updatePropertyDetails,
          deleteProperty,
-         updatePropertyStatus
+         updatePropertyStatus,
+         getUserListings
        } from "../controllers/property.controller.js";
 
 import { verifyFirebaseToken, verifyLister } from "../middlewares/authMiddleware.js"; 
@@ -15,6 +16,11 @@ const router = Router()
 
 // Public route - no authentication required for browsing/searching properties
 router.route("/").get(getFilteredProperties)
+
+router.route("/my-listings").get(
+    verifyFirebaseToken,
+    getUserListings
+)
 
 router.route("/create").post(
     verifyFirebaseToken, 

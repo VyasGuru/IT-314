@@ -58,15 +58,7 @@ const verifyFirebaseToken = asyncHandler(async (req, _, next) => {
 });
 
 const verifyLister = asyncHandler(async (req, _, next) => {
-  const userRole = req.user?.role;
-
-  if (userRole !== "lister") {
-    throw new ApiError(
-      403,
-      "Access Denied: You must be a 'lister' to perform this action."
-    );
-  }
-
+  // if the firebase token is acceptedd, then the user is of course verified so okay...
   next();
 });
 

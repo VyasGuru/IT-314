@@ -19,6 +19,8 @@ import AdminDashboard from "./components/admin_dashboard/AdminDashboard";
 import AdminRoute from "./components/AdminRoute";
 import LandingPage from "./components/landing_page/LandingPage";
 import PropertyComparisonPage from "./components/comparison_page/PropertyComparisonPage";
+import EditListing from "./components/user_dashboard/EditListing";
+import AddListing from "./components/user_dashboard/AddListing";
 
 export default function App() {
   const { currentUser, userRole } = useAuth();
@@ -135,6 +137,30 @@ export default function App() {
                 <>
                   <Header user={user} />
                   <UserDashboard />
+                </>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-listings/edit/:propertyId"
+            element={
+              <ProtectedRoute>
+                <>
+                  <Header user={user} />
+                  <EditListing />
+                </>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-listings/add"
+            element={
+              <ProtectedRoute>
+                <>
+                  <Header user={user} />
+                  <AddListing />
                 </>
               </ProtectedRoute>
             }

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import axios from "axios";
+import { getAuth } from "firebase/auth";
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../landing_page/Header';
@@ -6,8 +8,8 @@ import { PropertyDetails } from '../landing_page/PropertyDetails';
 import { getUserProfile, updateUserDetails, resetPassword } from '../../services/userApi';
 import { getSavedListings, removeSavedListing } from '../../services/savedListingApi';
 import { getComparedProperties } from '../../services/comparisonApi';
-import { getProperties } from '../../services/propertyApi';
 import { formatLocation } from '../../utils/formatLocation';
+import MyListings from './MyListings';
 import {
   User,
   Heart,
@@ -67,6 +69,43 @@ const UserDashboard = () => {
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isAddListingOpen, setIsAddListingOpen] = useState(false);
+  const [newListing, setNewListing] = useState({
+  title: "",
+  description: "",
+  yearBuild: "",
+  propertyType: "",
+  price: "",
+  size: "",
+  bedrooms: "",
+  bathrooms: "",
+  balconies: "",
+  amenities: {
+    parking: false,
+    gym: false,
+    swimmingPool: false,
+    wifi: false,
+    security: false,
+    powerBackup: false,
+    garden: false,
+    lift: false,
+    clubhouse: false,
+    playArea: false,
+    furnished: false
+  },
+  location: {
+    street: "",
+    city: "",
+    state: "",
+    country: "",
+    locality: "",
+    zipCode: "",
+    latitude: "",
+    longitude: ""
+  },
+  images: []
+});
+  const [images, setImages] = useState([]);
   
 
 
@@ -201,33 +240,18 @@ const UserDashboard = () => {
         setComparedProperties([]);
       }
 
-      // Fetch user's listed properties (properties where user is the lister)
-      // Note: This would need a backend endpoint to get properties by lister
-      // For now, we'll try to get all properties and filter, or use an empty array
+      // Fetch user's listed properties 
+      
       try {
-        const propertiesResponse = await getProperties();
-        if (propertiesResponse?.data && Array.isArray(propertiesResponse.data)) {
-          // Filter properties where current user is the lister
-          // This assumes the backend returns listing information with property
-          const userListings = propertiesResponse.data
-            .filter(p => p.listing?.lister?.firebaseUid === currentUser?.uid)
-            .map((p) => ({
-              id: p._id || p.id,
-              title: p.title || 'Property',
-              price: p.price || 'N/A',
-              location: p.location?.city
-                ? `${p.location.city}, ${p.location.state || ''}`
-                : 'Location N/A',
-              image: p.images?.[0] || 'https://via.placeholder.com/400',
-              status: p.listing?.status || 'pending',
-              views: p.listing?.views || 0,
-              inquiries: p.listing?.inquiries || 0,
-              listedDate: p.listing?.createdAt || p.createdAt || new Date().toISOString()
-            }));
-          setListedProperties(userListings);
-        }
-      } catch (propertiesError) {
-        console.error('Error fetching listed properties:', propertiesError);
+        const token = await currentUser.getIdToken();
+        const response = await axios.get('/api/properties/my-listings', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setListedProperties(response.data.data);
+      } catch (err) {
+        console.error('Error fetching listings:', err);
         setListedProperties([]);
       }
 
@@ -332,8 +356,53 @@ const handleViewDetails = (propertyId) => {
   };
 
   const handleAddNewListing = () => {
-    console.log('Add new listing');
-    alert('Add listing functionality will be implemented soon!');
+  setIsAddListingOpen(true);
+};
+
+const handleSubmitListing = async () => {
+const auth = getAuth();
+const token = await auth.currentUser.getIdToken();
+  try {
+    const formData = new FormData();
+
+    // Append text fields
+    Object.keys(newListing).forEach((key) => {
+      if (key === "amenities" || key === "location") {
+        formData.append(key, JSON.stringify(newListing[key]));
+      } else {
+        formData.append(key, newListing[key]);
+      }
+    });
+
+    // Append images
+    for (let i = 0; i < images.length; i++) {
+  formData.append("images", images[i]); // <-- must match multer
+}
+for (let pair of formData.entries()) {
+  console.log(pair[0] + ": " + pair[1]);
+}
+
+    const response = await axios.post(
+  "http://localhost:8000/api/properties/create",
+  formData,
+  {
+    headers: {
+      "Content-Type": "multipart/form-data",
+      Authorization: `Bearer ${token}`,  // <-- REQUIRED
+    },
+  }
+  
+);
+
+    alert("Listing created successfully!");
+
+    setIsAddListingOpen(false);
+    window.location.reload();
+
+  } catch (err) {
+    console.error(err);
+    alert("Error creating listing");
+  }
   };
 
   const handlePhotoChange = (e) => {
@@ -611,98 +680,7 @@ const handleViewDetails = (propertyId) => {
             }
 
             {/* My Listings Tab */}
-            {
-              activeTab === 'listed' && (
-                <div>
-                  {listedProperties.length > 0 && (
-                    <div className="flex justify-end mb-6">
-                      <button
-                        onClick={handleAddNewListing}
-                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                      >
-                        <Plus size={20} />
-                        Add New Listing
-                      </button>
-                    </div>
-                  )}
-
-                  {listedProperties.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                      {listedProperties.map(property => (
-                        <div key={property.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                          <div className="relative w-full h-48 overflow-hidden group">
-                            <img src={property.image} alt={property.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                            <span className={`absolute top-4 right-4 px-4 py-2 rounded-full text-xs font-semibold uppercase bg-white shadow-md border-2 ${property.status === 'active' ? 'text-green-600 border-green-600' :
-                              property.status === 'inactive' ? 'text-gray-600 border-gray-600' :
-                                'text-amber-600 border-amber-600'
-                              }`}>
-                              {property.status}
-                            </span>
-                          </div>
-                          <div className="p-6">
-                            <div className="flex justify-between items-start mb-3">
-                              <h3 className="text-lg font-semibold text-gray-800 flex-1">{property.title}</h3>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleEditListing(property.id)}
-                                  className="w-9 h-9 rounded-lg bg-gray-100 text-blue-600 flex items-center justify-center transition-all duration-300 hover:bg-blue-100 hover:scale-110"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteListing(property.id)}
-                                  className="w-9 h-9 rounded-lg bg-gray-100 text-red-600 flex items-center justify-center transition-all duration-300 hover:bg-red-100 hover:scale-110"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4 my-4 py-4 border-t border-b border-gray-200">
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="text-xs text-gray-500 uppercase">Views</span>
-                                <span className="text-lg font-bold text-gray-800">{property.views}</span>
-                              </div>
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="text-xs text-gray-500 uppercase">Inquiries</span>
-                                <span className="text-lg font-bold text-gray-800">{property.inquiries}</span>
-                              </div>
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="text-xs text-gray-500 uppercase">Listed</span>
-                                <span className="text-lg font-bold text-gray-800">{new Date(property.listedDate).getDate()}</span>
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => handleToggleListingStatus(property.id)}
-                              className={`w-full py-3 rounded-lg text-sm font-semibold transition-all duration-300 border-2 ${property.status === 'active'
-                                ? 'text-green-600 border-green-600 hover:bg-green-50'
-                                : 'text-blue-600 border-blue-600 hover:bg-blue-50'
-                                }`}
-                            >
-                              {property.status === 'active' ? 'Mark as Inactive' : 'Mark as Active'}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                      <Building2 size={64} className="text-gray-300 mb-4" />
-                      <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Listings Yet</h2>
-                      <p className="text-gray-600 mb-6">Create your first property listing</p>
-                      <button
-                        onClick={handleAddNewListing}
-                        className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                      >
-                        <Plus size={20} />
-                        Add New Listing
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
-            }
+            {activeTab === 'listed' && <MyListings listings={listedProperties} />}
 
             {/* Comparisons Tab */}
             {
@@ -1018,6 +996,197 @@ const handleViewDetails = (propertyId) => {
     }}
   />
 )}
+
+{isAddListingOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+    <div className="bg-white p-8 rounded-xl w-[700px] max-h-[90vh] overflow-y-auto">
+
+      <h2 className="text-2xl font-bold mb-4">Create New Listing</h2>
+
+      {/* TITLE */}
+      <input
+        className="w-full p-2 border rounded mb-3"
+        placeholder="Title"
+        value={newListing.title}
+        onChange={(e) => setNewListing({ ...newListing, title: e.target.value })}
+      />
+
+      {/* DESCRIPTION */}
+      <textarea
+        className="w-full p-2 border rounded mb-3"
+        placeholder="Description"
+        value={newListing.description}
+        onChange={(e) => setNewListing({ ...newListing, description: e.target.value })}
+      />
+
+      {/* PRICE */}
+      <input
+        className="w-full p-2 border rounded mb-3"
+        placeholder="Price"
+        type="number"
+        value={newListing.price}
+        onChange={(e) => setNewListing({ ...newListing, price: e.target.value })}
+      />
+
+      {/* YEAR */}
+      <input
+        className="w-full p-2 border rounded mb-3"
+        placeholder="Year Built"
+        type="number"
+        value={newListing.yearBuild}
+        onChange={(e) =>
+          setNewListing({ ...newListing, yearBuild: e.target.value })
+        }
+      />
+
+      {/* LOCATION */}
+      <h3 className="font-semibold mt-4">Location</h3>
+      <input className="w-full p-2 border rounded mb-3" placeholder="Street"
+        onChange={(e) => setNewListing({
+          ...newListing,
+          location: { ...newListing.location, street: e.target.value }
+        })}
+      />
+
+      <input className="w-full p-2 border rounded mb-3" placeholder="City"
+        onChange={(e) => setNewListing({
+          ...newListing,
+          location: { ...newListing.location, city: e.target.value }
+        })}
+      />
+
+      <input
+  className="border p-2 rounded w-full"
+  placeholder="Locality"
+  required
+  value={newListing.location.locality}
+  onChange={(e) =>
+    setNewListing({
+      ...newListing,
+      location: { ...newListing.location, locality: e.target.value }
+    })
+  }
+/>
+
+ <select
+  required
+  className="border p-2 rounded w-full"
+  value={newListing.propertyType}
+  onChange={(e) =>
+    setNewListing({ ...newListing, propertyType: e.target.value })
+  }
+>
+  <option value="">Select Property Type</option>
+  <option value="residential">Residential</option>
+  <option value="commercial">Commercial</option>
+  <option value="land">Land</option>
+  <option value="rental">Rental</option>
+</select>
+
+<input className="border p-2 rounded w-full" placeholder="Number of balconies"
+  type="number"
+  required
+  min="0"
+  value={newListing.balconies}
+  onChange={(e) =>
+    setNewListing({ ...newListing, balconies: Number(e.target.value) })
+  }
+  
+/>
+<input className="w-full p-2 border rounded mb-3" placeholder="State"
+  onChange={(e) => setNewListing({
+    ...newListing,
+    location: { ...newListing.location, state: e.target.value }
+  })}
+/>
+
+<input className="w-full p-2 border rounded mb-3" placeholder="Country"
+  onChange={(e) => setNewListing({
+    ...newListing,
+    location: { ...newListing.location, country: e.target.value }
+  })}
+/>
+
+<input className="w-full p-2 border rounded mb-3" placeholder="Zip Code"
+  onChange={(e) => setNewListing({
+    ...newListing,
+    location: { ...newListing.location, zipCode: e.target.value }
+  })}
+/>
+
+<input className="w-full p-2 border rounded mb-3" placeholder="Latitude"
+  onChange={(e) => setNewListing({
+    ...newListing,
+    location: { ...newListing.location, latitude: e.target.value }
+  })}
+/>
+
+<input className="w-full p-2 border rounded mb-3" placeholder="Longitude"
+  onChange={(e) => setNewListing({
+    ...newListing,
+    location: { ...newListing.location, longitude: e.target.value }
+  })}
+/>
+<input
+  type="number"
+  required
+  min="1"
+  value={newListing.size}
+  onChange={(e) =>
+    setNewListing({ ...newListing, size: Number(e.target.value) })
+  }
+  className="border p-2 rounded w-full"
+  placeholder="Enter property size (sq ft)"
+/>
+<input
+  type="number"
+  required
+  min="0"
+  value={newListing.bedrooms}
+  onChange={(e) =>
+    setNewListing({ ...newListing, bedrooms: Number(e.target.value) })
+  }
+  className="border p-2 rounded w-full"
+  placeholder="Number of bedrooms"
+/>
+<input
+  type="number"
+  required
+  min="0"
+  value={newListing.bathrooms}
+  onChange={(e) =>
+    setNewListing({ ...newListing, bathrooms: Number(e.target.value) })
+  }
+  className="border p-2 rounded w-full"
+  placeholder="Number of bathrooms"
+/>
+
+      {/* IMAGES */}
+      <h3 className="font-semibold mt-4">Images</h3>
+      <input
+        type="file"
+        multiple
+        onChange={(e) => setImages([...e.target.files])}
+      />
+
+      {/* SUBMIT BUTTON */}
+      <button
+        onClick={handleSubmitListing}
+        className="w-full py-3 bg-blue-600 text-white rounded-lg mt-4"
+      >
+        Submit Listing
+      </button>
+
+      <button
+        onClick={() => setIsAddListingOpen(false)}
+        className="w-full py-3 bg-gray-300 text-black rounded-lg mt-2"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
     </>
   );
 };
