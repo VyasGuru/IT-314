@@ -7,11 +7,11 @@ const app = express();
 
 // Enable CORS (Cross-Origin Resource Sharing)
 // This allows your backend to accept requests from the frontend (like React)
-app.use(cors({
-  origin: process.env.CORS_ORIGIN, // only allow requests from this frontend URL
-  credentials: true // allow cookies & auth headers
-}));
 
+app.use(cors({
+    origin: "http://localhost:5173",     
+    credentials: true,                   
+}));
 // Parse incoming JSON data 
 app.use(express.json());
 
@@ -32,6 +32,8 @@ import adminRoutes from "./routes/adminRoutes.js";
 import announcementRoutes from "./routes/announcement.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import listerVerificationRoutes from "./routes/listerVerification.routes.js";
+import chatbotRoutes from "./routes/chatbot.routes.js";
+import reviewRoutes from "./routes/review.routes.js";
 import adminListingRoutes from "./routes/adminListing.routes.js";
 
 
@@ -52,6 +54,8 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/lister-verification", listerVerificationRoutes);
+app.use("/api", chatbotRoutes);
+app.use("/api/reviews", reviewRoutes);
 app.use("/api/admin/listings", adminListingRoutes);
 
 

@@ -7,6 +7,7 @@ import { Review } from "../models/review.models.js";
 import mongoose from "mongoose";
 import { createAdminNotification, createListerNotification } from "../services/notification.service.js";
 import { recordPropertyUpload, recordStatusChange } from "../services/stats.service.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 
 const mapListingStatusToStats = (status) => {
     if (status === "verified" || status === "active") {
@@ -22,60 +23,135 @@ const mapListingStatusToStats = (status) => {
 
 
 const getFilteredProperties = asyncHandler(async (req, res) => {
-
     try {
-        const { minPrice, maxPrice, location, minSize, maxSize, bedrooms, bathrooms, propertyType, year_built, amenities } = req.query;
+        const { 
+            minPrice, 
+            maxPrice, 
+            location, 
+            minSize, 
+            maxSize, 
+            bedrooms, 
+            bathrooms, 
+            propertyType, 
+            year_built, 
+            amenities,
+            searchTerm,
+            search,
+            priceRange,
+            sortBy
+        } = req.query;
 
         // Create an empty filter object
         let filter = {};
 
-        // Add filters dynamically
+        // Search term filter - search in title, description, and location fields
+        const searchQuery = searchTerm || search;
+        if (searchQuery) {
+            const searchRegex = { $regex: searchQuery, $options: "i" };
+            filter.$or = [
+                { "title": searchRegex },
+                { "description": searchRegex },
+                { "location.city": searchRegex },
+                { "location.state": searchRegex },
+                { "location.street": searchRegex },
+                { "location.locality": searchRegex },
+                { "location.zipCode": searchRegex },
+                { "propertyType": searchRegex }
+            ];
+        }
+
+        // Location filter (city)
         if (location) {
-            filter["location.city"] = {     //regex used for find pattern, options = i , for case in sensetive
-                $regex: location, 
+            filter["location.city"] = {
+                $regex: location,
                 $options: "i",
-            }; 
+            };
         }
 
-        if (minPrice || maxPrice) {
+        // Price filter - handle both minPrice/maxPrice and priceRange
+        if (priceRange) {
+            let rangeMin = 0;
+            let rangeMax = Infinity;
+            
+            switch (priceRange) {
+                case "0-100k":
+                    rangeMin = 0;
+                    rangeMax = 100000;
+                    break;
+                case "100k-300k":
+                    rangeMin = 100001;
+                    rangeMax = 300000;
+                    break;
+                case "300k-500k":
+                    rangeMin = 300001;
+                    rangeMax = 500000;
+                    break;
+                case "500k-1m":
+                    rangeMin = 500001;
+                    rangeMax = 1000000;
+                    break;
+                case "1m+":
+                    rangeMin = 1000001;
+                    rangeMax = Infinity;
+                    break;
+            }
+            
+            filter.price = {
+                $gte: rangeMin,
+                ...(rangeMax !== Infinity && { $lte: rangeMax })
+            };
+        } else if (minPrice || maxPrice) {
             filter.price = {};
-            if (minPrice){
-                filter.price.$gte = Number(minPrice); //gte = greater than equal to
+            if (minPrice) {
+                filter.price.$gte = Number(minPrice);
             }
-            if (maxPrice){
-                filter.price.$lte = Number(maxPrice); //lte = less than equal to
+            if (maxPrice) {
+                filter.price.$lte = Number(maxPrice);
             }
         }
 
+        // Size filter
         if (minSize || maxSize) {
             filter.size = {};
-            if (minSize){
-                filter.size.$gte = Number(minSize); //convert minSize into number
-            } 
+            if (minSize) {
+                filter.size.$gte = Number(minSize);
+            }
             if (maxSize) {
                 filter.size.$lte = Number(maxSize);
             }
         }
 
-        if (bedrooms){
-            filter.bedrooms = Number(bedrooms);
-        } 
+        // Bedrooms filter - handle "5+" case
+        if (bedrooms) {
+            if (bedrooms === "5+") {
+                filter.bedrooms = { $gte: 5 };
+            } else {
+                filter.bedrooms = Number(bedrooms);
+            }
+        }
 
-        if (bathrooms){
-            filter.bathrooms = Number(bathrooms);
-        }   
+        // Bathrooms filter - handle "4+" case
+        if (bathrooms) {
+            if (bathrooms === "4+") {
+                filter.bathrooms = { $gte: 4 };
+            } else {
+                filter.bathrooms = Number(bathrooms);
+            }
+        }
 
-        if(propertyType){
+        // Property type filter
+        if (propertyType) {
             filter.propertyType = propertyType;
         }
 
-        if(year_built){
+        // Year built filter
+        if (year_built) {
             filter.yearBuild = {};
             filter.yearBuild.$lte = Number(year_built);
         }
 
+        // Amenities filter
         if (amenities) {
-            // List of valid amenity
             const validAmenities = [
                 "parking",
                 "gym",
@@ -89,79 +165,110 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
                 "playArea",
                 "furnished",
             ];
-
-            // Convert amenities string (e.g., "wifi,gym") into an array
             const selectedAmenities = amenities.split(",").map((a) => a.trim());
-
-            // Filter out valid ones
             const validSelected = selectedAmenities.filter((a) =>
                 validAmenities.includes(a)
             );
-
-            // write logiv for or operator, means any one of amenities present then display
             if (validSelected.length > 0) {
-                filter.$or = validSelected.map((a) => (
-                    {
+                // If search term exists, merge with $or, otherwise create new $or
+                if (filter.$or) {
+                    // Combine search $or with amenities $or using $and
+                    filter.$and = [
+                        { $or: filter.$or },
+                        { $or: validSelected.map((a) => ({
+                            [`amenities.${a}`]: true,
+                        })) }
+                    ];
+                    delete filter.$or;
+                } else {
+                    filter.$or = validSelected.map((a) => ({
                         [`amenities.${a}`]: true,
-                    }
-                ));
+                    }));
+                }
             }
         }
 
-        // Fetch filtered properties
-        const properties = await Property.find(filter);
+        // Build query
+        let query = Property.find(filter);
 
-        if (properties.length === 0) {
-            throw new ApiError(404, "No properties found")
+        // Sorting
+        if (sortBy) {
+            switch (sortBy) {
+                case "price-low":
+                    query = query.sort({ price: 1 });
+                    break;
+                case "price-high":
+                    query = query.sort({ price: -1 });
+                    break;
+                case "newest":
+                    query = query.sort({ yearBuild: -1 });
+                    break;
+                case "oldest":
+                    query = query.sort({ yearBuild: 1 });
+                    break;
+                case "featured":
+                    // Sort by featured first, then by creation date
+                    query = query.sort({ featured: -1, createdAt: -1 });
+                    break;
+                default:
+                    // Default sort by creation date (newest first)
+                    query = query.sort({ createdAt: -1 });
+                    break;
+            }
+        } else {
+            // Default sort by creation date (newest first)
+            query = query.sort({ createdAt: -1 });
         }
 
+        const properties = await query.exec();
+
         return res.status(200).json(
-            new ApiResponse(200, properties, "Property search Succesfully")
+            new ApiResponse(200, properties, "Property search successfully")
         );
 
+    } catch (error) {
+        console.error("Error in getFilteredProperties:", error);
+        throw new ApiError(500, "Internal Server Error while fetching properties: " + error.message);
     }
-
-    catch (error) {
-        throw new ApiError(500, error.message)
-    }
-
 });
 
 // CREATE PROPERTY FUNCTION OF A LISTER
 const createProperty = asyncHandler(async (req, res) => {
-    // We get all the data first
     const { 
         title, description, yearBuild, propertyType, 
         price, size, bedrooms, bathrooms, balconies, 
-        amenities, location
+        amenities, location 
     } = req.body;
 
-    // This check correctly handles '0'
-    const requiredFields = [
-        title, description, yearBuild, propertyType,
-        price, size, bedrooms, bathrooms, balconies,
-        amenities, location
-    ];
-    
+    const requiredFields = [title, description, yearBuild, propertyType, price, size, bedrooms, bathrooms, balconies, amenities, location];
     if (requiredFields.some(field => field === undefined || field === null || field === "")) {
         throw new ApiError(400, "All fields are required");
     }
 
-    const images = req.files; 
-    if (!images || images.length === 0) {
+    // 1. Handle Image Uploads
+    const imagesLocalPaths = req.files?.map(file => file.path);
+    if (!imagesLocalPaths || imagesLocalPaths.length === 0) {
         throw new ApiError(400, "At least one image is required");
     }
 
-    // We use a transaction
+    // Upload to Cloudinary
+    const uploadedImages = await Promise.all(
+        imagesLocalPaths.map(async (localPath) => {
+            const response = await uploadOnCloudinary(localPath);
+            return response?.url || null;
+        })
+    );
+    const validImageUrls = uploadedImages.filter(url => url !== null);
+
+    if (validImageUrls.length === 0) throw new ApiError(500, "Failed to upload images");
+
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-        const imageUrls = images.map(file => file.path); 
         const amenitiesObject = JSON.parse(amenities);
         const locationObject = JSON.parse(location);
         
-        //  Create the Property
         const newProperty = new Property({
             title,
             location: locationObject,
@@ -173,179 +280,94 @@ const createProperty = asyncHandler(async (req, res) => {
             bedrooms: Number(bedrooms),
             bathrooms: Number(bathrooms),
             balconies: Number(balconies),
-            images: imageUrls,
+            images: validImageUrls, // Use the Cloudinary URLs
             amenities: amenitiesObject,
-            priceHistory: [{
-                price: Number(price), 
-                reason: "Initial listing"
-            }]
+            priceHistory: [{ price: Number(price), reason: "Initial listing" }]
         });
 
-        await newProperty.save({ session }); // Save within the transaction
+        await newProperty.save({ session });
 
-        // Create the Listing
         const newListing = new Listing({
             propertyId: newProperty._id, 
             listerFirebaseUid: req.user._id, 
             status: "pending"            
         });
 
-        await newListing.save({ session }); // Save within the transaction
-
-        // If both worked, commit the changes
+        await newListing.save({ session });
         await session.commitTransaction();
 
-        await Promise.allSettled([
-            recordPropertyUpload({
-                propertyId: newProperty._id,
-                listerId: req.user?._id,
-                listerName: req.user?.name || req.user?.email,
-                title,
-            }),
-            createAdminNotification({
-                title: "New property upload",
-                message: `New property uploaded by ${req.user?.name || "Lister"}: \"${title}\"`,
-                type: "system",
-                metadata: {
-                    listerName: req.user?.name,
-                    listerId: req.user?._id,
-                    propertyTitle: title,
-                    propertyId: newProperty._id,
-                },
-            }),
-        ]);
-
-        return res.status(201).json(
-            new ApiResponse(201, { newProperty, newListing }, "Property and Listing created successfully")
-        );
+        return res.status(201).json(new ApiResponse(201, { newProperty, newListing }, "Property created successfully"));
 
     } catch (error) {
-        // If anything failed, roll back all changes
         await session.abortTransaction();
-        
-        // TODO: Add logic here to delete the uploaded images from Cloudinary/S3
-
         throw new ApiError(500, `Transaction failed: ${error.message}`);
     } finally {
         session.endSession();
     }
 });
 
-// This correctly updates both the Property and the Listing
+// UPDATE PROPERTY DETAILS FUNCTION OF A LISTER
 const updatePropertyDetails = asyncHandler(async (req, res) => {
-
-    // Get the Property's ID from the URL
     const { propertyId } = req.params; 
-    
-    // Get all the new data from the form
-
     const { 
         title, description, yearBuild, propertyType, 
         price, size, bedrooms, bathrooms, balconies, 
         amenities, location
     } = req.body;
 
-
-    // Find the property and its listing
     const property = await Property.findById(propertyId);
     if (!property) throw new ApiError(404, "Property not found");
 
-
     const listing = await Listing.findOne({ propertyId: property._id });
-    if (!listing) throw new ApiError(404, "Listing for this property not found");
+    if (!listing) throw new ApiError(404, "Listing not found");
 
-
-    // Security Check: Is the user the owner?
-    if (listing.listerFirebaseUid.toString() !== req.user._id.toString()) {
-        throw new ApiError(403, "You do not have permission to edit this property"); 
-    }
-
-
-    let newPriceHistory = [...property.priceHistory]; 
-    
-    if (price !== null && price !== undefined) {
-        const newPrice = Number(price);
-        if (isNaN(newPrice) || newPrice < 0) throw new ApiError(400, "Invalid price");
+    // 1. Handle New Images (If any)
+    if (req.files && req.files.length > 0) {
+        const imagesLocalPaths = req.files.map(file => file.path);
+        const uploadedImages = await Promise.all(
+            imagesLocalPaths.map(async (localPath) => {
+                const response = await uploadOnCloudinary(localPath);
+                return response?.url || null;
+            })
+        );
+        const validImageUrls = uploadedImages.filter(url => url !== null);
         
-
-        if (newPrice !== property.price) {
-            newPriceHistory.push({
-                price: newPrice,
-                reason: "Lister updated price"
-            });
-            property.price = newPrice;
+        // Append new images to the existing list
+        if (validImageUrls.length > 0) {
+            property.images.push(...validImageUrls);
         }
     }
 
-    // Update fields (This version safely handles '0' and nulls)
-    if (title !== null && title !== undefined) {
-        if(title.trim() === "") throw new ApiError(400, "Title cannot be empty");
-        property.title = title;
+    // 2. Update Fields
+    let newPriceHistory = [...property.priceHistory]; 
+    if (price && Number(price) !== property.price) {
+        newPriceHistory.push({ price: Number(price), reason: "Lister updated price" });
+        property.price = Number(price);
     }
 
-    if (description !== null && description !== undefined) {
-        property.description = description;
-    }
+    if (title) property.title = title;
+    if (description) property.description = description;
+    if (yearBuild) property.yearBuild = Number(yearBuild);
+    if (propertyType) property.propertyType = propertyType;
+    if (size) property.size = Number(size);
+    if (bedrooms) property.bedrooms = Number(bedrooms);
+    if (bathrooms) property.bathrooms = Number(bathrooms);
+    if (balconies) property.balconies = Number(balconies);
 
-    if (yearBuild !== null && yearBuild !== undefined) {
-        const numYear = Number(yearBuild);
-        if (isNaN(numYear) || numYear < 1000) throw new ApiError(400, "Invalid year");
-        property.yearBuild = numYear;
-    }
-
-    if (propertyType !== null && propertyType !== undefined) {
-        property.propertyType = propertyType;
-    }
-
-    if (size !== null && size !== undefined) {
-        const numSize = Number(size);
-        if (isNaN(numSize) || numSize < 0) throw new ApiError(400, "Invalid size");
-        property.size = numSize;
-    }
-
-    if (bedrooms !== null && bedrooms !== undefined) {
-        const numBedrooms = Number(bedrooms);
-        if (isNaN(numBedrooms) || numBedrooms < 0) throw new ApiError(400, "Invalid bedrooms");
-        property.bedrooms = numBedrooms;
-    }
-
-    if (bathrooms !== null && bathrooms !== undefined) {
-        const numBathrooms = Number(bathrooms);
-        if (isNaN(numBathrooms) || numBathrooms < 0) throw new ApiError(400, "Invalid bathrooms");
-        property.bathrooms = numBathrooms;
-    }
-
-    if (balconies !== null && balconies !== undefined) {
-        const numBalconies = Number(balconies);
-
-        if (isNaN(numBalconies) || numBalconies < 0) throw new ApiError(400, "Invalid balconies");
-        property.balconies = numBalconies;
-    }
-
-    // Safely parse JSON
     try {
-        if (amenities !== undefined && amenities !== null) {
-            property.amenities = JSON.parse(amenities);
-        }
-        if (location !== undefined && location !== null) {
-            property.location = JSON.parse(location);
-        }
-    } catch (parseError) {
-        throw new ApiError(400, "Invalid JSON format for amenities or location");
+        if (amenities) property.amenities = JSON.parse(amenities);
+        if (location) property.location = JSON.parse(location);
+    } catch (e) {
+        throw new ApiError(400, "Invalid JSON for amenities or location");
     }
 
-    // Final updates
-    property.priceHistory = newPriceHistory; 
-    listing.status = "pending"; // Force re-verification
+    property.priceHistory = newPriceHistory;
+    listing.status = "pending"; // Force re-verification on update
 
-    // Save
     const updatedProperty = await property.save();
     const updatedListing = await listing.save();
 
-    return res.status(200).json(
-        new ApiResponse(200, { updatedProperty, updatedListing }, "Property updated, pending re-verification")
-    );
-
+    return res.status(200).json(new ApiResponse(200, { updatedProperty, updatedListing }, "Property updated"));
 });
 
 const updatePropertyStatus = asyncHandler(async (req, res) => {
@@ -371,7 +393,7 @@ const updatePropertyStatus = asyncHandler(async (req, res) => {
 
 
     // Security Check: Is the logged-in user the real owner?
-    if (listing.listerFirebaseUid.toString() !== req.user._id.toString()) {
+    if (listing.listerFirebaseUid.toString() !== req.user.firebaseUid.toString()) {
         throw new ApiError(403, "You can't change this property's status");
     }
 
@@ -389,8 +411,6 @@ const updatePropertyStatus = asyncHandler(async (req, res) => {
 
 //  DELETE PROPERTY FUNCTION OF LISTER
 const deleteProperty = asyncHandler(async (req, res) => {
-
-    // Get the Property's _id from the URL
     const { propertyId } = req.params; 
 
     const property = await Property.findById(propertyId);
@@ -399,33 +419,20 @@ const deleteProperty = asyncHandler(async (req, res) => {
     const listing = await Listing.findOne({ propertyId: property._id });
     if (!listing) throw new ApiError(404, "Listing for this property not found");
 
-    // Security Check
-    if (listing.listerFirebaseUid.toString() !== req.user._id.toString()) {
-        throw new ApiError(403, "You can't delete this property");
+// Delete images from Cloudinary 
+    if (property.images && property.images.length > 0) {
+        const deletePromises = property.images.map(imageUrl => deleteFromCloudinary(imageUrl));
+        await Promise.all(deletePromises); // Wait for all images to be deleted
     }
 
-    // Delete Images
-    const imageUrls = property.images || [];
-    if (imageUrls.length > 0) {
-        console.log(`TODO: Delete ${imageUrls.length} images from cloud storage.`);
-    }
-
-    //  Delete Reviews 
-    const propertyIdString = property._id.toString();
-    
-    await Review.deleteMany({ 
-        target_id: propertyIdString,
-        target_type: "property" 
-    });
-
-    // delete the database records 
+    // Clean up database
+    await Review.deleteMany({ target_id: property._id.toString(), target_type: "property" });
     await Property.findByIdAndDelete(propertyId);
     await Listing.findByIdAndDelete(listing._id);
 
     return res.status(200).json(
-        new ApiResponse(200, {}, "Property, listing, and reviews deleted")
+        new ApiResponse(200, {}, "Property, listing, reviews, and images deleted")
     );
-
 });
 
 const reviewPropertyStatus = asyncHandler(async (req, res) => {
@@ -504,6 +511,52 @@ const reviewPropertyStatus = asyncHandler(async (req, res) => {
     );
 });
 
+const getUserListings = asyncHandler(async (req, res) => {
+    const listerId = req.user._id;
+
+    if (!listerId) {
+        throw new ApiError(400, "User not authenticated");
+    }
+
+    const listings = await Listing.find({ listerFirebaseUid: listerId }).populate({
+        path: 'propertyId',
+        model: 'Property'
+    });
+
+    if (!listings || listings.length === 0) {
+        return res.status(200).json(new ApiResponse(200, [], "No listings found for this user"));
+    }
+
+    const userListings = listings.map(listing => {
+        if (!listing.propertyId) {
+            // This can happen if a property is deleted but the listing still exists
+            return null;
+        }
+        return {
+            listingId: listing._id,
+            status: listing.status,
+            rejectionReason: listing.rejectionReason,
+            createdAt: listing.createdAt,
+            updatedAt: listing.updatedAt,
+            property: {
+                _id: listing.propertyId._id,
+                title: listing.propertyId.title,
+                description: listing.propertyId.description,
+                price: listing.propertyId.price,
+                location: listing.propertyId.location,
+                images: listing.propertyId.images,
+                propertyType: listing.propertyId.propertyType,
+                bedrooms: listing.propertyId.bedrooms,
+                bathrooms: listing.propertyId.bathrooms,
+                size: listing.propertyId.size,
+                yearBuild: listing.propertyId.yearBuild,
+            }
+        };
+    }).filter(Boolean); // Remove null entries
+
+    return res.status(200).json(new ApiResponse(200, userListings, "User listings retrieved successfully"));
+});
+
 export {
     getFilteredProperties,
     createProperty,
@@ -511,4 +564,5 @@ export {
     updatePropertyStatus,
     deleteProperty,
     reviewPropertyStatus,
+    getUserListings,
 }

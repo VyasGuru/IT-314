@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 
 const missionImage = 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop';
@@ -143,12 +144,12 @@ const CtaSection = () => (
         Start your search today with our powerful tools and dedicated team by your side.
       </p>
       <div className="mt-8">
-        <a
-          href="#" // Link to your properties page
+        <Link
+          to="/properties"
           className="inline-block bg-white text-blue-600 font-semibold py-3 px-8 rounded-lg shadow-md hover:bg-blue-50 transition duration-300"
         >
           Search Properties
-        </a>
+        </Link>
       </div>
     </div>
   </div>

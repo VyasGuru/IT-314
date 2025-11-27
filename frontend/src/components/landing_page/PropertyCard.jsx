@@ -1,56 +1,130 @@
-import { MapPin, Bed, Bath, Square, Heart, Eye } from "lucide-react";
-import { useState } from "react";
+import { MapPin, Bed, Bath, Square, Heart, Eye, GitCompare } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { formatLocation } from "../../utils/formatLocation";
+import { useComparison } from "../../contexts/ComparisonContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { useSavedListings } from "../../contexts/SavedListingsContext";
 
-export function PropertyCard({ 
-  id, 
-  title, 
-  price, 
-  location, 
-  bedrooms, 
-  bathrooms, 
-  area, 
-  image, 
+export function PropertyCard({
+  id,
+  _id,
+  title,
+  price,
+  location,
+  bedrooms,
+  bathrooms,
+  area,
+  size,
+  image,
+  images = [],
   status,
   featured = false,
-  onViewDetails 
+  onViewDetails,
+  ...rest
 }) {
-  const [liked, setLiked] = useState(false);
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const { properties: comparedProperties, addProperty, removeProperty, updatingId } = useComparison();
 
+  // ===== SAVED LISTINGS CONTEXT =====
+  const { isSaved, toggleSaved } = useSavedListings();
+
+  const propertyId = id || _id || rest?.propertyId;
+
+  // Convert values
+  const locationString = formatLocation(location);
+  const areaString = area || (size ? `${size} sq ft` : "N/A");
+  const primaryImage = image || images?.[0] || rest?.coverImage || "/placeholder.jpg";
+
+  const isCompared = useMemo(
+    () => comparedProperties.some((item) => (item._id || item.id) === propertyId),
+    [comparedProperties, propertyId]
+  );
+
+  const isUpdating = updatingId === propertyId;
+
+  const propertyPayload = {
+    _id: propertyId,
+    title,
+    price,
+    location,
+    bedrooms,
+    bathrooms,
+    size,
+    area: areaString,
+    status,
+    propertyType: rest?.propertyType,
+    yearBuild: rest?.yearBuild,
+    amenities: rest?.amenities,
+    images: images?.length ? images : image ? [image] : [],
+  };
+
+  const handleViewDetails = () => {
+    if (onViewDetails && propertyId) {
+      onViewDetails(propertyId);
+    }
+  };
+
+
+  // ===== COMPARE TOGGLE =====
+  const handleComparisonToggle = async (event) => {
+    event.stopPropagation();
+    if (!currentUser) return navigate("/login");
+
+    try {
+      if (isCompared) {
+        await removeProperty(propertyId);
+      } else {
+        await addProperty(propertyPayload);
+      }
+    } catch (err) {
+      console.error("Comparison error:", err);
+      alert("Unable to update comparison list right now.");
+    }
+  };
+
+  // ===== LIKE/SAVE TOGGLE =====
+  const handleToggleLike = async (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+
+    if (!currentUser) return navigate("/login");
+
+    try {
+      await toggleSaved(propertyId); // handled entirely by context
+    } catch (err) {
+      console.error("Save toggle error:", err);
+    }
+  };
+
+  // ===== STATUS BADGES =====
   const getStatusBadge = () => {
     switch (status) {
       case "for-sale":
-        return (
-          <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">
-            For Sale
-          </span>
-        );
+        return <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">For Sale</span>;
       case "for-rent":
-        return (
-          <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded">
-            For Rent
-          </span>
-        );
+        return <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded">For Rent</span>;
       case "sold":
-        return (
-          <span className="bg-gray-400 text-white text-xs px-2 py-1 rounded">
-            Sold
-          </span>
-        );
+        return <span className="bg-gray-400 text-white text-xs px-2 py-1 rounded">Sold</span>;
       default:
         return null;
     }
   };
 
+  const liked = isSaved(propertyId); // REAL TIME STATE FROM CONTEXT
+
   return (
     <div className="group overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer bg-white">
-      {/* Image */}
+
+      {/* Image Section */}
       <div className="relative">
         <div className="aspect-video overflow-hidden">
           <img
-            src={image}
+            src={primaryImage}
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => e.target.src = "/placeholder.jpg"} // fallback image
+            onError={(e) => (e.target.src = "/placeholder.jpg")}
           />
         </div>
 
@@ -66,14 +140,16 @@ export function PropertyCard({
 
         {/* Like Button */}
         <button
-          onClick={() => setLiked(!liked)}
+          onClick={handleToggleLike}
+          aria-pressed={liked}
           className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm p-1 rounded-full hover:bg-white transition-colors"
+          title={liked ? "Remove saved" : "Save property"}
         >
-          <Heart className={`h-4 w-4 ${liked ? "text-red-500" : "text-gray-500"}`} />
+          <Heart className={`h-4 w-4 ${liked ? "text-red-500 fill-current" : "text-gray-500"}`} />
         </button>
       </div>
 
-      {/* Content */}
+      {/* Card Content */}
       <div className="p-6">
         <div className="mb-4">
           <h3 className="font-semibold text-lg mb-2 group-hover:text-blue-600 transition-colors">
@@ -81,9 +157,9 @@ export function PropertyCard({
           </h3>
           <div className="flex items-center text-gray-500 mb-2">
             <MapPin className="h-4 w-4 mr-1" />
-            <span className="text-sm">{location}</span>
+            <span className="text-sm">{locationString}</span>
           </div>
-          <p className="text-2xl font-bold text-blue-600">{price}</p>
+          <p className="text-2xl font-bold text-blue-600">₹{price ? Number(price).toLocaleString('en-IN') : 'N/A'}</p>
         </div>
 
         <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
@@ -97,17 +173,32 @@ export function PropertyCard({
           </div>
           <div className="flex items-center gap-1">
             <Square className="h-4 w-4" />
-            <span>{area}</span>
+            <span>{areaString}</span>
           </div>
         </div>
 
-        <button
-          onClick={() => onViewDetails(id)}
-          className="w-full flex items-center justify-center gap-2 border border-blue-600 text-blue-600 rounded-lg px-4 py-2 hover:bg-blue-50 transition-colors"
-        >
-          <Eye className="h-4 w-4" />
-          View Details
-        </button>
+        {/* Buttons */}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            onClick={handleViewDetails}
+            className="w-full flex items-center justify-center gap-2 border border-blue-600 text-blue-600 rounded-lg px-4 py-2 hover:bg-blue-50 transition-colors"
+          >
+            <Eye className="h-4 w-4" />
+            View Details
+          </button>
+
+          <button
+            onClick={handleComparisonToggle}
+            className={`w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors ${isCompared
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            disabled={isUpdating}
+          >
+            <GitCompare className="h-4 w-4" />
+            {isCompared ? "In Compare" : "Compare"}
+          </button>
+        </div>
       </div>
     </div>
   );

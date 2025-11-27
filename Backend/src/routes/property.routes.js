@@ -1,11 +1,11 @@
 import { Router } from "express";
-import {
-        getFilteredProperties,
-        createProperty,
-        updatePropertyDetails,
-        deleteProperty,
-        updatePropertyStatus,
-} from "../controllers/property.controller.js";
+import { getFilteredProperties,
+         createProperty,
+         updatePropertyDetails,
+         deleteProperty,
+         updatePropertyStatus,
+         getUserListings
+       } from "../controllers/property.controller.js";
 
 import { verifyFirebaseToken, verifyLister } from "../middlewares/authMiddleware.js"; 
 
@@ -14,7 +14,13 @@ import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router()
 
+// Public route - no authentication required for browsing/searching properties
 router.route("/").get(getFilteredProperties)
+
+router.route("/my-listings").get(
+    verifyFirebaseToken,
+    getUserListings
+)
 
 router.route("/create").post(
     verifyFirebaseToken, 
@@ -25,7 +31,8 @@ router.route("/create").post(
 
 router.route("/update-details/:propertyId").patch(
     verifyFirebaseToken, 
-    verifyLister, 
+    verifyLister,
+    upload.array("images", 10), 
     updatePropertyDetails
 );
 

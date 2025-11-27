@@ -9,6 +9,10 @@ const JWT_SECRET = process.env.JWT_SECRET || "replace_this_with_strong_secret";
 
 // register new admin
 export async function registerAdmin(req, res) {
+  // TODO: This function is not working because the User model does not have username and password fields.
+  // This needs to be updated to work with the User model and Firebase authentication.
+  res.status(500).json({ message: "This feature is not implemented yet." });
+  /*
   try {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ message: "username and password required" });
@@ -24,10 +28,15 @@ export async function registerAdmin(req, res) {
     console.error("Error registering admin:", err);
     res.status(500).json({ message: "Error registering admin", error: err.message });
   }
+  */
 }
 
 // login admin and issue token
 export async function loginAdmin(req, res) {
+  // TODO: This function is not working because the User model does not have username and password fields.
+  // This needs to be updated to work with the User model and Firebase authentication.
+  res.status(500).json({ message: "This feature is not implemented yet." });
+  /*
   try {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ message: "username and password required" });
@@ -45,6 +54,7 @@ export async function loginAdmin(req, res) {
     console.error("Error logging in admin:", err);
     res.status(500).json({ message: "Error logging in", error: err.message });
   }
+  */
 }
 
 // classify a review and store it
@@ -53,7 +63,7 @@ export async function classifySingleReview(req, res) {
     const { comment, targetType, targetId, reviewerFirebaseUid, rating } = req.body;
 
     // basic validation
-    if (!comment) return res.status(400).json({ message: "Comment required" });
+    if (!comment || comment.trim().length === 0) return res.status(400).json({ message: "Comment required" });
     if (!targetType || !targetId || !reviewerFirebaseUid) {
       return res.status(400).json({ message: "targetType, targetId, reviewerFirebaseUid required" });
     }
@@ -63,7 +73,7 @@ export async function classifySingleReview(req, res) {
 
     // persist review
     const newReview = new Review({
-      comment,
+      comment: comment.trim(),
       targetType,
       targetId,
       reviewerFirebaseUid,
@@ -71,13 +81,12 @@ export async function classifySingleReview(req, res) {
       isAbusive: result.isAbusive
     });
 
-    await newReview.save();
-
+    const savedReview = await newReview.save(); // Get the result of save()
     res.status(201).json({
-      message: "Review saved",
-      review: newReview,
-      moderation: result
-    });
+    message: "Review saved", 
+    review: savedReview,  // Use the returned saved document
+    moderation: result
+});
   } catch (error) {
     console.error("Error classifying review:", error);
     res.status(500).json({ message: "Error processing review", error: error.message });

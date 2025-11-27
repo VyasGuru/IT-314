@@ -96,16 +96,16 @@ const getComparedProperties = asyncHandler(async (req, res) => {
 
         const comparison = await PropertyComparison.findOne({userFirebaseUid: userId}).populate("propertyIds"); //get full imformation of property
     
+        // Return empty array
         if(!comparison || comparison.propertyIds.length === 0){
-            throw new ApiError(404, "No properties selected for comparison");
+            return res.status(200).json(
+                new ApiResponse(200, [], "No properties selected for comparison")
+            );
         }
     
-        if(comparison.propertyIds.length < 2){
-            throw new ApiError(400, "At least two properties are required for comparison");
-        }
-    
+        // fronted handle less than 2 case
         res.status(200).json(
-            new ApiResponse(200, comparison.propertyIds, "Properties ready for comparison")
+            new ApiResponse(200, comparison.propertyIds, "Comparison properties retrieved successfully")
         );
 
     } 

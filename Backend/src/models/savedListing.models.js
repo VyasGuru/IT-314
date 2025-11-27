@@ -2,15 +2,15 @@ import mongoose from "mongoose";
 
 const savedListingSchema = new mongoose.Schema(
     {
-        userFirebaseUid: {
+        userId: {                             
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
         },
 
-        listingId: {
+        listingId: {                          
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Listing",
+            ref: "Property",
             required: true,
         },
 

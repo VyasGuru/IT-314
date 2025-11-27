@@ -1,114 +1,97 @@
+import mongoose from "mongoose";
 import { SavedListing } from "../models/savedListing.models.js";
-import { Listing } from "../models/listing.models.js";
+import { Property } from "../models/property.models.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+// Save listing
+const saveUserListing = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+    const { listingId: propertyId, notes } = req.body;
 
-//save listing
-const saveUserListing = asyncHandler( async (req, res) => {
-
-    const userId = req.user._id;  //for this action first middle checked if user is loggin or not
-
-
-    const { listingId, notes } = req.body;
-
-    //check for listing exists
-    const listingExists = await Listing.findById(listingId);
-
-    if(!listingExists){
-        throw new ApiError(404, "Listing not found");
+    if (!propertyId) {
+        throw new ApiError(400, "Property ID is required.");
     }
 
-
-    //prevent dublicate save
-    const alreadySaved = await SavedListing.findOne(
-        {
-            userFirebaseUid: userId,
-            listingId,
-        }
-    );
-
-
-    if(alreadySaved){
-        throw new ApiError(400, "Listing already saved");
+    // 1. Check property exists
+    const propertyExists = await Property.findById(propertyId);
+    if (!propertyExists) {
+        throw new ApiError(404, "Property not found");
     }
 
-    //saved 
-    const saved = await SavedListing.create(
-        {
-            userFirebaseUid: userId,
-            listingId,
-            notes: notes || "",
-        }
-    );
+    // 2. Prevent duplicate saves
+    const alreadySaved = await SavedListing.findOne({
+        userId: userId,
+        listingId: propertyId
+    });
+
+    if (alreadySaved) {
+        return res.status(200).json(new ApiResponse(200, alreadySaved, "Listing was already saved."));
+    }
+
+    // 3. Create saved listing
+    const saved = await SavedListing.create({
+        userId: userId,
+        listingId: propertyId,
+        notes: notes || ""
+    });
 
     res.status(201).json(
         new ApiResponse(201, saved, "Listing saved successfully")
     );
-
-    
 });
 
+// Remove saved listing
+const removeSavedListing = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+    const { propertyId } = req.params;
 
-//remove a saved listing
-const removeSavedListing = asyncHandler( async (req, res) => {
+    const deleted = await SavedListing.findOneAndDelete({
+        userId: userId,        // <-- Ensure userId is used in query
+        listingId: propertyId
+    });
 
-    const userId = req.user._id;  //for this action first middle checked if user is loggin or not
-
-    const { listingId } = req.params;
-
-    const deleted = await SavedListing.findOneAndDelete(
-        {
-            userFirebaseUid: userId,
-            listingId,
-        }
-    );
-
-    if(!deleted){
+    if (!deleted) {
         throw new ApiError(404, "Saved listing not found");
     }
 
     res.status(200).json(
         new ApiResponse(200, null, "Listing removed successfully.")
     );
-
 });
 
-
-//get all saved listing
-
+// Get all saved listings
 const getSavedListings = asyncHandler(async (req, res) => {
-
     const userId = req.user._id;
 
-    const saved = await SavedListing.find(
-        {
-            userFirebaseUid: userId,
-        }
-    ).populate(
-        {
-            path: "listingId", //First, populate the listingId field in SavedListing (i.e., get the listing details).
-            populate: {
-                path: "propertyId", //Then, inside each listing, also populate the propertyId field (get the property details).
-            },
-        }
-    ).sort(
-        {
-            createdAt: -1 //sort in descending order(newest saved listing first)
-        }
-    );
-
+    const saved = await SavedListing.find({
+        userId: userId          // <-- Ensure userId is used in query
+    })
+        .populate({
+            path: "listingId",
+        })
+        .sort({ createdAt: -1 });
 
     res.status(200).json(
         new ApiResponse(200, saved, "Fetched saved listings")
     );
-
 });
 
+// Get all saved listing IDs
+const getSavedListingIds = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+
+    const savedListingIds = await SavedListing.find({ userId }).select('listingId -_id');
+
+    res.status(200).json(
+        new ApiResponse(200, savedListingIds.map(item => item.listingId), "Fetched saved listing IDs")
+    );
+});
 
 export {
     saveUserListing,
     removeSavedListing,
     getSavedListings,
+    getSavedListingIds
 };

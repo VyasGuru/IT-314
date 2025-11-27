@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react';
+import axios from "axios";
+import { getAuth } from "firebase/auth";
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../landing_page/Header';
+import { PropertyDetails } from '../landing_page/PropertyDetails';
+import { getUserProfile, updateUserDetails, resetPassword } from '../../services/userApi';
+import { getSavedListings, removeSavedListing } from '../../services/savedListingApi';
+import { getComparedProperties } from '../../services/comparisonApi';
+import { formatLocation } from '../../utils/formatLocation';
+import MyListings from './MyListings';
 import {
   User,
   Heart,
@@ -16,105 +24,90 @@ import {
   Trash2,
   Plus,
   Eye,
+  EyeOff,
+  Lock,
   MessageSquare,
   Calendar,
   Mail,
   Phone,
   TrendingUp,
-  Share2
+  Share2,
+  Menu, // Import Menu icon for hamburger
+  X // Import X for close
 } from 'lucide-react';
 
 const UserDashboard = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for sidebar
   const { currentUser, userRole, signOut } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('saved');
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState(null);
   const [savedProperties, setSavedProperties] = useState([]);
   const [comparedProperties, setComparedProperties] = useState([]);
   const [listedProperties, setListedProperties] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const stats = [
-    {
-      label: 'Saved Properties',
-      value: savedProperties.length,
-      icon: Heart,
-      color: 'from-rose-500 to-rose-600',
-      target: 'saved'
-    },
-    {
-      label: 'My Listings',
-      value: listedProperties.length,
-      icon: Building2,
-      color: 'from-blue-600 to-blue-700',
-      target: 'listed'
-    },
-    {
-      label: 'Comparisons',
-      value: comparedProperties.length,
-      icon: GitCompare,
-      color: 'from-purple-600 to-indigo-600',
-      target: 'comparisons'
-    },
-    {
-      label: 'Unread Notifications',
-      value: notifications.filter(n => !n.read).length,
-      icon: Bell,
-      color: 'from-amber-500 to-amber-600',
-      target: 'notifications'
-    }
-  ];
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    phone: '',
+    photo: null
+  });
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isAddListingOpen, setIsAddListingOpen] = useState(false);
+  const [newListing, setNewListing] = useState({
+  title: "",
+  description: "",
+  yearBuild: "",
+  propertyType: "",
+  price: "",
+  size: "",
+  bedrooms: "",
+  bathrooms: "",
+  balconies: "",
+  amenities: {
+    parking: false,
+    gym: false,
+    swimmingPool: false,
+    wifi: false,
+    security: false,
+    powerBackup: false,
+    garden: false,
+    lift: false,
+    clubhouse: false,
+    playArea: false,
+    furnished: false
+  },
+  location: {
+    street: "",
+    city: "",
+    state: "",
+    country: "",
+    locality: "",
+    zipCode: "",
+    latitude: "",
+    longitude: ""
+  },
+  images: []
+});
+  const [images, setImages] = useState([]);
+  
 
-  const upcomingVisits = [
-    {
-      id: 1,
-      property: 'Skyline Aura Residences',
-      time: 'Thu, Nov 21 · 10:00 AM',
-      agent: 'Priya Shah',
-      location: 'Ahmedabad, GJ'
-    },
-    {
-      id: 2,
-      property: 'Sea Breeze Penthouse',
-      time: 'Sat, Nov 23 · 4:30 PM',
-      agent: 'Rahul Menon',
-      location: 'Mumbai, MH'
-    },
-    {
-      id: 3,
-      property: 'North Park Townhomes',
-      time: 'Mon, Nov 25 · 12:00 PM',
-      agent: 'Kavya Desai',
-      location: 'Gandhinagar, GJ'
-    }
-  ];
-
-  const activityTimeline = [
-    {
-      id: 1,
-      title: '24 people viewed Cozy Studio Apartment',
-      category: 'Listing reach increased 14% this week',
-      time: '2h ago',
-      icon: Eye,
-      accent: 'bg-violet-100 text-violet-600'
-    },
-    {
-      id: 2,
-      title: 'New inquiry from Rahul regarding Skyline Aura',
-      category: 'Respond within 2 hours to keep badge',
-      time: '5h ago',
-      icon: MessageSquare,
-      accent: 'bg-rose-100 text-rose-500'
-    },
-    {
-      id: 3,
-      title: 'You scheduled two property tours for this week',
-      category: 'Both visitors requested project brochures',
-      time: 'Yesterday',
-      icon: Calendar,
-      accent: 'bg-amber-100 text-amber-600'
-    }
-  ];
 
   useEffect(() => {
     if (!currentUser) {
@@ -127,109 +120,144 @@ const UserDashboard = () => {
   const fetchUserData = async () => {
     try {
       setLoading(true);
-      setUserData({
-        displayName: currentUser?.displayName || 'User',
-        email: currentUser?.email || '',
-        photoURL: currentUser?.photoURL || '',
-        phone: '+91 9876543210',
-        joinedDate: '2024-01-15',
-        verified: true
-      });
 
-      setSavedProperties([
-        {
-          id: 1,
-          title: 'Modern Beachfront Condo',
-          price: '₹850,000',
-          location: 'Mumbai, MH',
-          image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
-          bedrooms: 3,
-          bathrooms: 2,
-          area: '1,500 sq ft',
-          savedDate: '2024-11-10'
-        },
-        {
-          id: 2,
-          title: 'Downtown Luxury Apartment',
-          price: '₹3,200/month',
-          location: 'Ahmedabad, GJ',
-          image: 'https://images.unsplash.com/photo-1638454668466-e8dbd5462f20?w=400',
-          bedrooms: 2,
-          bathrooms: 2,
-          area: '1,200 sq ft',
-          savedDate: '2024-11-12'
+      // Fetch user profile from backend
+      try {
+        const profileResponse = await getUserProfile();
+        if (profileResponse?.data) {
+          const backendUser = profileResponse.data;
+          setUserData({
+            displayName: backendUser.name || currentUser?.displayName || 'User',
+            email: backendUser.email || currentUser?.email || '',
+            photoURL: backendUser.photo || currentUser?.photoURL || '',
+            phone: backendUser.phone || '',
+            joinedDate: backendUser.createdAt || new Date().toISOString(),
+            verified: backendUser.verified || false
+          });
+          // Set form initial values
+          setProfileForm({
+            name: backendUser.name || currentUser?.displayName || '',
+            phone: backendUser.phone || '',
+            photo: null
+          });
+          setPhotoPreview(backendUser.photo || currentUser?.photoURL || null);
+        } else {
+          // Fallback to Firebase user data if backend profile not available
+          setUserData({
+            displayName: currentUser?.displayName || 'User',
+            email: currentUser?.email || '',
+            photoURL: currentUser?.photoURL || '',
+            phone: '',
+            joinedDate: new Date().toISOString(),
+            verified: false
+          });
+          setProfileForm({
+            name: currentUser?.displayName || '',
+            phone: '',
+            photo: null
+          });
+          setPhotoPreview(currentUser?.photoURL || null);
         }
-      ]);
+      } catch (profileError) {
+        console.error('Error fetching user profile:', profileError);
+        // Fallback to Firebase user data
+        setUserData({
+          displayName: currentUser?.displayName || 'User',
+          email: currentUser?.email || '',
+          photoURL: currentUser?.photoURL || '',
+          phone: '',
+          joinedDate: new Date().toISOString(),
+          verified: false
+        });
+        setProfileForm({
+          name: currentUser?.displayName || '',
+          phone: '',
+          photo: null
+        });
+        setPhotoPreview(currentUser?.photoURL || null);
+      }
 
-      setComparedProperties([
-        {
-          id: 3,
-          title: 'Contemporary Family Home',
-          price: '₹525,000',
-          location: 'Baroda, GJ',
-          image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400'
-        }
-      ]);
+      try {
+  const savedResponse = await getSavedListings();
+  const savedArray = savedResponse?.data;
 
-      setListedProperties([
-        {
-          id: 101,
-          title: 'Spacious 3BHK Villa',
-          price: '₹1,200,000',
-          location: 'Surat, GJ',
-          image: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400',
-          status: 'active',
-          views: 245,
-          inquiries: 12,
-          listedDate: '2024-10-15'
-        },
-        {
-          id: 102,
-          title: 'Cozy Studio Apartment',
-          price: '₹2,500/month',
-          location: 'Ahmedabad, GJ',
-          image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400',
-          status: 'inactive',
-          views: 89,
-          inquiries: 3,
-          listedDate: '2024-11-01'
-        },
-        {
-          id: 103,
-          title: '2BHK Modern Flat',
-          price: '₹780,000',
-          location: 'Rajkot, GJ',
-          image: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400',
-          status: 'pending',
-          views: 34,
-          inquiries: 1,
-          listedDate: '2024-11-10'
-        }
-      ]);
+  if (Array.isArray(savedArray)) {
+    const transformedSaved = savedArray.map((item) => {
+      const listing = item.listingId || item.listing;
+      const property = listing; 
 
-      setNotifications([
-        {
-          id: 1,
-          type: 'price_drop',
-          message: 'Price dropped on Modern Beachfront Condo',
-          date: '2024-11-15',
-          read: false
-        },
-        {
-          id: 2,
-          type: 'new_match',
-          message: 'New property matches your preferences',
-          date: '2024-11-14',
-          read: false
-        },
-        {
-          id: 3,
-          type: 'saved',
-          message: 'Property saved successfully',
-          date: '2024-11-12',
-          read: true
+      return {
+        id: item._id,               
+        listingId: listing._id,      
+        property,                    
+
+        
+        title: property.title,
+        price: property.price,
+        location: property.location?.city
+          ? `${property.location.city}, ${property.location.state || ''}`
+          : "Location N/A",
+        image: property.images?.[0] || "https://via.placeholder.com/400",
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        area: property.size ? `${property.size} sq ft` : "0 sq ft",
+        savedDate: item.createdAt,
+      };
+    });
+
+    setSavedProperties(transformedSaved);
+  }
+} catch (savedError) {
+  console.error("Error fetching saved listings:", savedError);
+  setSavedProperties([]);
+}
+
+
+
+
+      // Fetch compared properties
+      try {
+        const comparedResponse = await getComparedProperties();
+        // Backend returns an array of property objects directly (from comparison.propertyIds populated)
+        if (comparedResponse?.data && Array.isArray(comparedResponse.data)) {
+          // Transform compared properties data
+          const transformedCompared = comparedResponse.data.map((property) => ({
+            id: property._id || property.id,
+            title: property.title || 'Property',
+            price: property.price || 'N/A',
+            location: property.location?.city
+              ? `${property.location.city}, ${property.location.state || ''}`
+              : 'Location N/A',
+            image: property.images?.[0] || 'https://via.placeholder.com/400'
+          }));
+          setComparedProperties(transformedCompared);
         }
-      ]);
+      } catch (comparedError) {
+        // If no comparison found (404), it's okay - user just hasn't added any yet
+        if (comparedError.response?.status !== 404) {
+          console.error('Error fetching compared properties:', comparedError);
+        }
+        setComparedProperties([]);
+      }
+
+      // Fetch user's listed properties 
+      
+      try {
+        const token = await currentUser.getIdToken();
+        const response = await axios.get('/api/properties/my-listings', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setListedProperties(response.data.data);
+      } catch (err) {
+        console.error('Error fetching listings:', err);
+        setListedProperties([]);
+      }
+
+      // Notifications - would need a separate endpoint
+      // For now, using empty array until notification API is set up
+      setNotifications([]);
 
       setLoading(false);
     } catch (error) {
@@ -237,6 +265,31 @@ const UserDashboard = () => {
       setLoading(false);
     }
   };
+
+  const handleUnsave = async (savedItemId) => {
+  try {
+    await removeSavedListing(savedItemId);
+
+    // forcing hard reload as not using context right now
+    window.location.reload();
+
+  } catch (err) {
+    console.error("Error unsaving property:", err);
+  }
+};
+
+
+
+const handleViewDetails = (propertyId) => {
+  const saved = savedProperties.find((p) => p.listingId === propertyId);
+
+  if (!saved) return;
+
+  setSelectedProperty(saved.property); // full property object
+  setIsDetailsOpen(true);
+};
+
+
 
   const handleSignOut = async () => {
     try {
@@ -247,16 +300,38 @@ const UserDashboard = () => {
     }
   };
 
-  const handleRemoveSaved = (propertyId) => {
-    setSavedProperties(savedProperties.filter(p => p.id !== propertyId));
-  };
+  
 
-  const handleRemoveComparison = (propertyId) => {
-    setComparedProperties(comparedProperties.filter(p => p.id !== propertyId));
+  
+
+  const handleRemoveComparison = async (propertyId) => {
+    try {
+      const { removePropertyFromComparison } = await import('../../services/comparisonApi');
+      await removePropertyFromComparison(propertyId);
+      // Refresh compared properties
+      const comparedResponse = await getComparedProperties();
+      if (comparedResponse?.data && Array.isArray(comparedResponse.data)) {
+        // Transform compared properties data - backend returns array of property objects
+        const transformedCompared = comparedResponse.data.map((property) => ({
+          id: property._id || property.id,
+          title: property.title || 'Property',
+          price: property.price || 'N/A',
+          location: property.location?.city
+            ? `${property.location.city}, ${property.location.state || ''}`
+            : 'Location N/A',
+          image: property.images?.[0] || 'https://via.placeholder.com/400'
+        }));
+        setComparedProperties(transformedCompared);
+      } else {
+        setComparedProperties([]);
+      }
+    } catch (error) {
+      console.error('Error removing comparison:', error);
+    }
   };
 
   const markNotificationAsRead = (notificationId) => {
-    setNotifications(notifications.map(n => 
+    setNotifications(notifications.map(n =>
       n.id === notificationId ? { ...n, read: true } : n
     ));
   };
@@ -273,25 +348,183 @@ const UserDashboard = () => {
   };
 
   const handleToggleListingStatus = (propertyId) => {
-    setListedProperties(listedProperties.map(p => 
-      p.id === propertyId 
-        ? { ...p, status: p.status === 'active' ? 'inactive' : 'active' } 
+    setListedProperties(listedProperties.map(p =>
+      p.id === propertyId
+        ? { ...p, status: p.status === 'active' ? 'inactive' : 'active' }
         : p
     ));
   };
 
   const handleAddNewListing = () => {
-    console.log('Add new listing');
-    alert('Add listing functionality will be implemented soon!');
+  setIsAddListingOpen(true);
+};
+
+const handleSubmitListing = async () => {
+const auth = getAuth();
+const token = await auth.currentUser.getIdToken();
+  try {
+    const formData = new FormData();
+
+    // Append text fields
+    Object.keys(newListing).forEach((key) => {
+      if (key === "amenities" || key === "location") {
+        formData.append(key, JSON.stringify(newListing[key]));
+      } else {
+        formData.append(key, newListing[key]);
+      }
+    });
+
+    // Append images
+    for (let i = 0; i < images.length; i++) {
+  formData.append("images", images[i]); // <-- must match multer
+}
+for (let pair of formData.entries()) {
+  console.log(pair[0] + ": " + pair[1]);
+}
+
+    const response = await axios.post(
+  "http://localhost:8000/api/properties/create",
+  formData,
+  {
+    headers: {
+      "Content-Type": "multipart/form-data",
+      Authorization: `Bearer ${token}`,  // <-- REQUIRED
+    },
+  }
+  
+);
+
+    alert("Listing created successfully!");
+
+    setIsAddListingOpen(false);
+    window.location.reload();
+
+  } catch (err) {
+    console.error(err);
+    alert("Error creating listing");
+  }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB');
+        return;
+      }
+      setProfileForm({ ...profileForm, photo: file });
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    try {
+      const response = await updateUserDetails(
+        profileForm.name,
+        profileForm.phone,
+        profileForm.photo
+      );
+
+      if (response?.data) {
+        const updatedUser = response.data;
+        setUserData({
+          ...userData,
+          displayName: updatedUser.name || userData.displayName,
+          phone: updatedUser.phone || userData.phone,
+          photoURL: updatedUser.photo || userData.photoURL
+        });
+        setPhotoPreview(updatedUser.photo || photoPreview);
+        alert('Profile updated successfully!');
+        // Refresh user data
+        await fetchUserData();
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    // Validation
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError('All password fields are required');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters long');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('New password and confirm password do not match');
+      return;
+    }
+
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      setPasswordError('New password must be different from current password');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      const response = await resetPassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword
+      );
+
+      if (response?.message) {
+        setPasswordSuccess('Password updated successfully!');
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        // Clear success message after 5 seconds
+        setTimeout(() => {
+          setPasswordSuccess('');
+        }, 5000);
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      if (error.response?.data?.message) {
+        setPasswordError(error.response.data.message);
+      } else if (error.response?.status === 401) {
+        setPasswordError('Invalid current password. Please try again.');
+      } else {
+        setPasswordError('Failed to update password. Please try again.');
+      }
+    } finally {
+      setIsResettingPassword(false);
+    }
   };
 
   const headerUser = currentUser
     ? {
-        name: currentUser.displayName || currentUser.email,
-        email: currentUser.email,
-        picture: currentUser.photoURL,
-        role: userRole,
-      }
+      name: currentUser.displayName || currentUser.email,
+      email: currentUser.email,
+      picture: currentUser.photoURL,
+      role: userRole,
+    }
     : null;
 
   if (loading) {
@@ -307,22 +540,21 @@ const UserDashboard = () => {
     <>
       <div className="flex min-h-screen bg-gray-50">
         {/* Sidebar */}
-        <aside className="w-72 bg-gradient-to-b from-blue-600 to-blue-800 text-white flex flex-col fixed h-full left-0 overflow-y-auto shadow-lg rounded-r-2xl">
+        <aside className={`w-72 bg-gradient-to-b from-blue-600 to-blue-800 text-white flex-col fixed h-full left-0 overflow-y-auto shadow-lg rounded-r-2xl z-20 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out flex`}>
           <div className="p-8 text-center border-b border-white/10">
             <div className="w-20 h-20 rounded-full mx-auto mb-4 bg-white/20 flex items-center justify-center overflow-hidden border-3 border-white">
-              {userData?.photoURL ? (
-                <img src={userData.photoURL} alt={userData.displayName} className="w-full h-full object-cover" />
+              {(userData?.photoURL || photoPreview) ? (
+                <img src={photoPreview || userData.photoURL} alt={userData?.displayName || 'User'} className="w-full h-full object-cover" />
               ) : (
                 <User size={40} />
               )}
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">{userData?.displayName}</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">{userData?.displayName || 'User'}</h3>
             <p className="text-sm text-white/80">{userRole === 'admin' ? 'Administrator' : 'User'}</p>
           </div>
 
           <nav className="flex-1 py-4">
             {[
-              { id: 'overview', icon: Home, label: 'Overview' },
               { id: 'saved', icon: Heart, label: 'Saved Properties', count: savedProperties.length },
               { id: 'listed', icon: Building2, label: 'My Listings', count: listedProperties.length },
               { id: 'comparisons', icon: GitCompare, label: 'Comparisons', count: comparedProperties.length },
@@ -331,10 +563,12 @@ const UserDashboard = () => {
             ].map(item => (
               <button
                 key={item.id}
-                className={`w-full flex items-center gap-3 px-6 py-4 text-base cursor-pointer transition-all duration-300 relative text-left hover:bg-white/10 ${
-                  activeTab === item.id ? 'bg-white/20 text-white font-semibold before:content-[""] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-white' : 'text-white/90'
-                }`}
-                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-3 px-6 py-4 text-base cursor-pointer transition-all duration-300 relative text-left hover:bg-white/10 ${activeTab === item.id ? 'bg-white/20 text-white font-semibold before:content-[""] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-white' : 'text-white/90'
+                  }`}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (window.innerWidth < 1024) setIsSidebarOpen(false); // Close on selection on mobile
+                }}
               >
                 <item.icon size={20} />
                 <span>{item.label}</span>
@@ -348,7 +582,7 @@ const UserDashboard = () => {
           </nav>
 
           <div className="p-6 border-t border-white/10">
-            <button 
+            <button
               className="w-full flex items-center gap-3 px-4 py-3 bg-white/10 border-none text-white rounded-lg cursor-pointer transition-all duration-300 hover:bg-white/20"
               onClick={handleSignOut}
             >
@@ -359,10 +593,23 @@ const UserDashboard = () => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 pl-72 p-8 pt-20 min-h-screen">
+        <main className="flex-1 lg:pl-72 p-4 sm:p-8 pt-16 sm:pt-20 min-h-screen">
+          <button
+            className="lg:hidden fixed top-5 left-5 z-30 p-2 bg-white rounded-full shadow-md text-gray-800"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+
+          {isSidebarOpen && (
+            <div
+              className="lg:hidden fixed inset-0 bg-black/40 z-10"
+              onClick={() => setIsSidebarOpen(false)}
+            ></div>
+          )}
+
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-800">
-              {activeTab === 'overview' && 'Dashboard Overview'}
               {activeTab === 'saved' && 'Saved Properties'}
               {activeTab === 'listed' && 'My Listings'}
               {activeTab === 'comparisons' && 'Property Comparisons'}
@@ -371,523 +618,575 @@ const UserDashboard = () => {
             </h1>
           </div>
 
-          <div className="bg-white rounded-xl p-8 shadow-sm">
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
-              <div className="flex flex-col gap-8">
-                <div className="rounded-3xl bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 text-white p-8 flex flex-col lg:flex-row gap-8">
-                  <div className="flex-1">
-                    <p className="text-xs uppercase tracking-[0.4em] text-white/70 font-semibold">
-                      Welcome back
-                    </p>
-                    <h2 className="text-3xl lg:text-4xl font-bold mt-3">
-                      {`Good to see you, ${userData?.displayName?.split(' ')[0] || 'there'}!`}
-                    </h2>
-                    <p className="text-white/80 mt-3 max-w-xl">
-                      You have {notifications.filter(n => !n.read).length} unread alerts and {upcomingVisits.length} upcoming visits.
-                      Keep the momentum going by following up on new leads today.
-                    </p>
-                    <div className="flex flex-wrap gap-3 mt-8">
-                      <button
-                        onClick={handleAddNewListing}
-                        className="px-5 py-3 rounded-full bg-white/90 text-blue-700 font-semibold flex items-center gap-2 shadow-sm hover:-translate-y-0.5 transition-all duration-300"
-                      >
-                        <Plus size={18} />
-                        Add new listing
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('notifications')}
-                        className="px-5 py-3 rounded-full border border-white/40 text-white font-semibold flex items-center gap-2 hover:bg-white/15 transition-all duration-300"
-                      >
-                        <Bell size={18} />
-                        Review alerts
-                      </button>
-                    </div>
-                  </div>
-                  <div className="w-full lg:w-80 grid grid-cols-2 gap-4">
-                    {[
-                      {
-                        label: 'Response time',
-                        value: '1h 20m',
-                        helper: '12m faster this week'
-                      },
-                      {
-                        label: 'Visit success',
-                        value: '37%',
-                        helper: '+6% vs last week'
-                      },
-                      {
-                        label: 'Leads nurtured',
-                        value: '18',
-                        helper: '4 pending replies'
-                      },
-                      {
-                        label: 'Avg. rating',
-                        value: '4.8',
-                        helper: 'Client satisfaction score'
-                      }
-                    ].map((metric, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-white/10 backdrop-blur rounded-2xl p-4 text-center border border-white/20"
-                      >
-                        <p className="text-xs uppercase tracking-widest text-white/70">
-                          {metric.label}
-                        </p>
-                        <p className="text-2xl font-bold mt-2">{metric.value}</p>
-                        <p className="text-xs text-white/70 mt-1">{metric.helper}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          <div className="bg-white rounded-xl p-4 sm:p-8 shadow-sm">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {stats.map((stat, idx) => (
-                    <button
-                      key={idx}
-                      className="flex items-center gap-4 p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:-translate-y-1 transition-all duration-300 hover:shadow-lg"
-                      onClick={() => setActiveTab(stat.target)}
-                    >
-                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${stat.color} text-white flex items-center justify-center`}>
-                        <stat.icon size={24} />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-3xl font-bold text-gray-900 leading-none">{stat.value}</p>
-                        <p className="text-sm text-gray-500 mt-1">{stat.label}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                  <div className="flex flex-col gap-6 xl:col-span-2">
-                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                      <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm text-gray-500 uppercase tracking-[0.3em]">
-                            Shortcuts
-                          </p>
-                          <h3 className="text-xl font-semibold text-gray-900 mt-1">
-                            Make things happen faster
-                          </h3>
-                        </div>
-                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-medium">
-                          <TrendingUp size={16} />
-                          92% response rate
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-                        {[
-                          {
-                            title: 'Schedule visit',
-                            subtitle: 'Send invite + itinerary',
-                            icon: Calendar,
-                            action: () => setActiveTab('listed')
-                          },
-                          {
-                            title: 'Share listing',
-                            subtitle: 'Send curated PDF',
-                            icon: Share2,
-                            action: () => alert('Share flow coming soon!')
-                          },
-                          {
-                            title: 'Answer inquiries',
-                            subtitle: '2 pending replies',
-                            icon: MessageSquare,
-                            action: () => setActiveTab('notifications')
-                          }
-                        ].map((item, idx) => (
-                          <button
-                            key={idx}
-                            onClick={item.action}
-                            className="p-4 rounded-xl border border-gray-200 text-left hover:border-blue-600 hover:bg-blue-50 transition-all duration-300"
-                          >
-                            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-3">
-                              <item.icon size={18} />
-                            </div>
-                            <p className="font-semibold text-gray-900">{item.title}</p>
-                            <p className="text-sm text-gray-500">{item.subtitle}</p>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <p className="text-sm text-gray-500 uppercase tracking-[0.35em]">
-                            Upcoming visits
-                          </p>
-                          <h3 className="text-xl font-semibold text-gray-900 mt-1">
-                            This week&apos;s calendar
-                          </h3>
-                        </div>
-                        <button className="text-sm font-semibold text-blue-600 hover:text-blue-500">
-                          View calendar
-                        </button>
-                      </div>
-                      <div className="flex flex-col gap-4">
-                        {upcomingVisits.map(visit => (
-                          <div
-                            key={visit.id}
-                            className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 border border-gray-100 rounded-xl hover:border-blue-200 transition-all duration-300"
-                          >
-                            <div>
-                              <p className="font-semibold text-gray-900">{visit.property}</p>
-                              <div className="flex items-center gap-2 text-sm text-gray-500">
-                                <MapPin size={14} />
-                                {visit.location}
-                              </div>
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              <p className="font-medium text-gray-900">{visit.time}</p>
-                              <p>Agent · {visit.agent}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-sm text-gray-500 uppercase tracking-[0.35em]">
-                          Activity
-                        </p>
-                        <h3 className="text-xl font-semibold text-gray-900 mt-1">
-                          What&apos;s happening today
-                        </h3>
-                      </div>
-                      <span className="text-xs text-gray-400">Live</span>
-                    </div>
-                    <div className="flex flex-col gap-4">
-                      {activityTimeline.map(event => (
-                        <div
-                          key={event.id}
-                          className="flex gap-3 items-start p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200"
-                        >
-                          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${event.accent}`}>
-                            <event.icon size={20} />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900">{event.title}</p>
-                            <p className="text-sm text-gray-500">{event.category}</p>
-                          </div>
-                          <span className="text-xs text-gray-400">{event.time}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Saved Properties Tab */}
-            {activeTab === 'saved' && (
-              <div>
-                {savedProperties.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {savedProperties.map(property => (
-                      <div key={property.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                        <div className="relative w-full h-48 overflow-hidden group">
-                          <img src={property.image} alt={property.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                          <button
-                            onClick={() => handleRemoveSaved(property.id)}
-                            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white text-pink-600 flex items-center justify-center transition-all duration-300 shadow-md hover:bg-pink-600 hover:text-white hover:scale-110"
-                          >
-                            <Heart size={20} fill="currentColor" />
-                          </button>
-                        </div>
-                        <div className="p-6">
-                          <h3 className="text-lg font-semibold text-gray-800 mb-2">{property.title}</h3>
-                          <p className="text-2xl font-bold text-blue-600 mb-3">{property.price}</p>
-                          <div className="flex items-center gap-2 text-gray-600 mb-4">
-                            <MapPin size={16} />
-                            <span className="text-sm">{property.location}</span>
+            {
+              activeTab === 'saved' && (
+                <div>
+                  {savedProperties.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {savedProperties.map(property => (
+                        <div key={property.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+                          <div className="relative w-full h-48 overflow-hidden group">
+                            <img src={property.image} alt={property.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                            <button
+                              onClick={() => handleUnsave(property.listingId || property.id)}
+                              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white text-pink-600 flex items-center justify-center transition-all duration-300 shadow-md hover:bg-pink-600 hover:text-white hover:scale-110"
+                            >
+                              <Heart size={20} fill="currentColor" />
+                            </button>
                           </div>
-                          <div className="flex gap-4 mb-4 pt-4 border-t border-gray-200">
-                            <span className="text-sm text-gray-600">{property.bedrooms} Beds</span>
-                            <span className="text-sm text-gray-600">{property.bathrooms} Baths</span>
-                            <span className="text-sm text-gray-600">{property.area}</span>
+                          <div className="p-6">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-2">{property.title}</h3>
+                            <p className="text-2xl font-bold text-blue-600 mb-3">{property.price}</p>
+                            <div className="flex items-center gap-2 text-gray-600 mb-4">
+                              <MapPin size={16} />
+                              <span className="text-sm">{formatLocation(property.location)}</span>
+                            </div>
+                            <div className="flex gap-4 mb-4 pt-4 border-t border-gray-200">
+                              <span className="text-sm text-gray-600">{property.bedrooms} Beds</span>
+                              <span className="text-sm text-gray-600">{property.bathrooms} Baths</span>
+                              <span className="text-sm text-gray-600">{property.area}</span>
+                            </div>
+                            <p className="text-xs text-gray-400 mb-4">Saved on {property.savedDate}</p>
+                            <button
+                              onClick={() => handleViewDetails(property.listingId || property.id)}
+                              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+                              View Details
+                            </button>
                           </div>
-                          <p className="text-xs text-gray-400 mb-4">Saved on {property.savedDate}</p>
-                          <button className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <Heart size={64} className="text-gray-300 mb-4" />
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Saved Properties</h2>
-                    <p className="text-gray-600 mb-6">Start saving properties to view them here</p>
-                    <button className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-                      <Plus size={20} />
-                      Browse Properties
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* My Listings Tab */}
-            {activeTab === 'listed' && (
-              <div>
-                <div className="flex justify-end mb-6">
-                  <button
-                    onClick={handleAddNewListing}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <Plus size={20} />
-                    Add New Listing
-                  </button>
-                </div>
-
-                {listedProperties.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {listedProperties.map(property => (
-                      <div key={property.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                        <div className="relative w-full h-48 overflow-hidden group">
-                          <img src={property.image} alt={property.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                          <span className={`absolute top-4 right-4 px-4 py-2 rounded-full text-xs font-semibold uppercase bg-white shadow-md border-2 ${
-                            property.status === 'active' ? 'text-green-600 border-green-600' :
-                            property.status === 'inactive' ? 'text-gray-600 border-gray-600' :
-                            'text-amber-600 border-amber-600'
-                          }`}>
-                            {property.status}
-                          </span>
-                        </div>
-                        <div className="p-6">
-                          <div className="flex justify-between items-start mb-3">
-                            <h3 className="text-lg font-semibold text-gray-800 flex-1">{property.title}</h3>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleEditListing(property.id)}
-                                className="w-9 h-9 rounded-lg bg-gray-100 text-blue-600 flex items-center justify-center transition-all duration-300 hover:bg-blue-100 hover:scale-110"
-                              >
-                                <Edit size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteListing(property.id)}
-                                className="w-9 h-9 rounded-lg bg-gray-100 text-red-600 flex items-center justify-center transition-all duration-300 hover:bg-red-100 hover:scale-110"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-4 my-4 py-4 border-t border-b border-gray-200">
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="text-xs text-gray-500 uppercase">Views</span>
-                              <span className="text-lg font-bold text-gray-800">{property.views}</span>
-                            </div>
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="text-xs text-gray-500 uppercase">Inquiries</span>
-                              <span className="text-lg font-bold text-gray-800">{property.inquiries}</span>
-                            </div>
-                            <div className="flex flex-col items-center gap-1">
-                              <span className="text-xs text-gray-500 uppercase">Listed</span>
-                              <span className="text-lg font-bold text-gray-800">{new Date(property.listedDate).getDate()}</span>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={() => handleToggleListingStatus(property.id)}
-                            className={`w-full py-3 rounded-lg text-sm font-semibold transition-all duration-300 border-2 ${
-                              property.status === 'active'
-                                ? 'text-green-600 border-green-600 hover:bg-green-50'
-                                : 'text-blue-600 border-blue-600 hover:bg-blue-50'
-                            }`}
-                          >
-                            {property.status === 'active' ? 'Mark as Inactive' : 'Mark as Active'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <Building2 size={64} className="text-gray-300 mb-4" />
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Listings Yet</h2>
-                    <p className="text-gray-600 mb-6">Create your first property listing</p>
-                    <button 
-                      onClick={handleAddNewListing}
-                      className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                    >
-                      <Plus size={20} />
-                      Add New Listing
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Comparisons Tab */}
-            {activeTab === 'comparisons' && (
-              <div>
-                {comparedProperties.length > 0 ? (
-                  <>
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold text-gray-800">Comparing {comparedProperties.length} Properties</h2>
-                      <button
-                        onClick={() => setComparedProperties([])}
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg transition-all duration-300 hover:bg-red-600"
-                      >
-                        Clear All
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {comparedProperties.map(property => (
-                        <div key={property.id} className="relative bg-white border-2 border-gray-200 rounded-xl overflow-hidden p-4">
-                          <button
-                            onClick={() => handleRemoveComparison(property.id)}
-                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center z-10 transition-all duration-300 hover:bg-red-600 hover:scale-110 text-xl leading-none"
-                          >
-                            ×
-                          </button>
-                          <img src={property.image} alt={property.title} className="w-full h-36 object-cover rounded-lg mb-4" />
-                          <h3 className="text-base font-semibold text-gray-800 mb-2">{property.title}</h3>
-                          <p className="text-xl font-bold text-blue-600 mb-1">{property.price}</p>
-                          <p className="text-sm text-gray-600">{property.location}</p>
                         </div>
                       ))}
                     </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <GitCompare size={64} className="text-gray-300 mb-4" />
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Comparisons</h2>
-                    <p className="text-gray-600 mb-6">Add properties to compare them side by side</p>
-                    <button className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-                      <Plus size={20} />
-                      Browse Properties
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Notifications Tab */}
-            {activeTab === 'notifications' && (
-              <div className="flex flex-col gap-2">
-                {notifications.map(notification => (
-                  <div
-                    key={notification.id}
-                    onClick={() => markNotificationAsRead(notification.id)}
-                    className={`flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all duration-300 hover:bg-gray-50 hover:border-blue-600 ${
-                      notification.read ? 'bg-white border-gray-200' : 'bg-blue-50 border-l-4 border-blue-600'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      notification.read ? 'bg-gray-200 text-blue-600' : 'bg-blue-200 text-blue-600'
-                    }`}>
-                      <Bell size={20} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800 mb-1">{notification.message}</p>
-                      <p className="text-xs text-gray-500">{notification.date}</p>
-                    </div>
-                    {!notification.read && (
-                      <div className="w-2.5 h-2.5 rounded-full bg-blue-600 flex-shrink-0"></div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Settings Tab */}
-            {activeTab === 'settings' && (
-              <div className="flex flex-col gap-8">
-                <div className="pb-8 border-b border-gray-200">
-                  <h2 className="text-xl font-bold text-gray-800 mb-6">Profile Settings</h2>
-                  <div className="flex gap-8 flex-wrap">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-4 border-blue-600">
-                        {userData?.photoURL ? (
-                          <img src={userData.photoURL} alt={userData.displayName} className="w-full h-full object-cover" />
-                        ) : (
-                          <User size={48} className="text-gray-400" />
-                        )}
-                      </div>
-                      <button className="px-4 py-2 bg-white text-blue-600 border-2 border-blue-600 rounded-lg font-medium transition-all duration-300 hover:bg-blue-600 hover:text-white">
-                        Change Photo
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <Heart size={64} className="text-gray-300 mb-4" />
+                      <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Saved Properties</h2>
+                      <p className="text-gray-600 mb-6">Start saving properties to view them here</p>
+                      <button
+                        onClick={() => navigate('/properties')}
+                        className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                      >
+                        <Plus size={20} />
+                        Browse Properties
                       </button>
                     </div>
+                  )}
+                </div>
+              )
+            }
 
-                    <div className="flex-1 flex flex-col gap-4 min-w-[300px]">
-                      <div className="flex flex-col gap-2">
-                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                          <User size={16} />
-                          Display Name
-                        </label>
-                        <input
-                          type="text"
-                          defaultValue={userData?.displayName}
-                          className="px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white"
-                        />
+            {/* My Listings Tab */}
+            {activeTab === 'listed' && <MyListings listings={listedProperties} />}
+
+            {/* Comparisons Tab */}
+            {
+              activeTab === 'comparisons' && (
+                <div>
+                  {comparedProperties.length > 0 ? (
+                    <>
+                      <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800">Comparing {comparedProperties.length} Properties</h2>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const { clearComparison } = await import('../../services/comparisonApi');
+                              await clearComparison();
+                              setComparedProperties([]);
+                            } catch (error) {
+                              console.error('Error clearing comparison:', error);
+                            }
+                          }}
+                          className="px-4 py-2 bg-red-500 text-white rounded-lg transition-all duration-300 hover:bg-red-600"
+                        >
+                          Clear All
+                        </button>
                       </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                          <Mail size={16} />
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          defaultValue={userData?.email}
-                          className="px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white"
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {comparedProperties.map(property => (
+                          <div key={property.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group">
+                            <div className="relative w-full h-48 overflow-hidden">
+                              <img src={property.image} alt={property.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                              <button
+                                onClick={() => handleRemoveComparison(property.id)}
+                                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/90 text-red-500 flex items-center justify-center z-10 transition-all duration-300 hover:bg-red-500 hover:text-white shadow-sm"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                            <div className="p-5">
+                              <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-1">{property.title}</h3>
+                              <p className="text-xl font-bold text-blue-600 mb-2">{property.price}</p>
+                              <div className="flex items-center gap-2 text-gray-500 text-sm">
+                                <MapPin size={14} />
+                                <span className="line-clamp-1">{formatLocation(property.location)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                          <Phone size={16} />
-                          Phone
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <GitCompare size={64} className="text-gray-300 mb-4" />
+                      <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Comparisons</h2>
+                      <p className="text-gray-600 mb-6">Add properties to compare them side by side</p>
+                      <button
+                        onClick={() => navigate('/properties')}
+                        className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                      >
+                        <Plus size={20} />
+                        Browse Properties
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            {/* Notifications Tab */}
+            {
+              activeTab === 'notifications' && (
+                <div className="flex flex-col gap-2">
+                  {notifications.map(notification => (
+                    <div
+                      key={notification.id}
+                      onClick={() => markNotificationAsRead(notification.id)}
+                      className={`flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all duration-300 hover:bg-gray-50 hover:border-blue-600 ${notification.read ? 'bg-white border-gray-200' : 'bg-blue-50 border-l-4 border-blue-600'
+                        }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notification.read ? 'bg-gray-200 text-blue-600' : 'bg-blue-200 text-blue-600'
+                        }`}>
+                        <Bell size={20} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-800 mb-1">{notification.message}</p>
+                        <p className="text-xs text-gray-500">{notification.date}</p>
+                      </div>
+                      {!notification.read && (
+                        <div className="w-2.5 h-2.5 rounded-full bg-blue-600 flex-shrink-0"></div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+
+            {/* Settings Tab */}
+            {
+              activeTab === 'settings' && (
+                <div className="flex flex-col gap-8">
+                  <form onSubmit={handleProfileUpdate} className="pb-8 border-b border-gray-200">
+                    <h2 className="text-xl font-bold text-gray-800 mb-6">Profile Settings</h2>
+                    <div className="flex gap-8 flex-wrap">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-4 border-blue-600">
+                          {photoPreview ? (
+                            <img src={photoPreview} alt={profileForm.name || 'User'} className="w-full h-full object-cover" />
+                          ) : (
+                            <User size={48} className="text-gray-400" />
+                          )}
+                        </div>
+                        <label className="px-4 py-2 bg-white text-blue-600 border-2 border-blue-600 rounded-lg font-medium transition-all duration-300 hover:bg-blue-600 hover:text-white cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoChange}
+                            className="hidden"
+                          />
+                          Change Photo
                         </label>
-                        <input
-                          type="tel"
-                          defaultValue={userData?.phone}
-                          className="px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white"
-                        />
+                      </div>
+
+                      <div className="flex-1 flex flex-col gap-4 min-w-[300px]">
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                            <User size={16} />
+                            Display Name
+                          </label>
+                          <input
+                            type="text"
+                            value={profileForm.name}
+                            onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                            className="px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white"
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                            <Mail size={16} />
+                            Email
+                          </label>
+                          <input
+                            type="email"
+                            value={userData?.email || ''}
+                            disabled
+                            className="px-4 py-3 border border-gray-300 rounded-lg text-gray-500 bg-gray-100 cursor-not-allowed"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                            <Phone size={16} />
+                            Phone
+                          </label>
+                          <input
+                            type="tel"
+                            value={profileForm.phone}
+                            onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                            className="px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white"
+                            placeholder="Enter 10-digit phone number"
+                            pattern="[0-9]{10}"
+                            maxLength="10"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={isUpdating}
+                          className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isUpdating ? 'Saving...' : 'Save Changes'}
+                        </button>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  </form>
 
-                <div className="pb-8 border-b border-gray-200">
-                  <h2 className="text-xl font-bold text-gray-800 mb-6">Preferences</h2>
-                  <div className="flex flex-col gap-4">
-                    {[
-                      { title: 'Email Notifications', desc: 'Receive email updates about your properties' },
-                      { title: 'Price Alerts', desc: 'Get notified when prices change' },
-                      { title: 'New Listings', desc: 'Receive alerts for new properties' }
-                    ].map((pref, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <h3 className="font-semibold text-gray-800 mb-1">{pref.title}</h3>
-                          <p className="text-sm text-gray-600">{pref.desc}</p>
-                        </div>
-                        <label className="relative inline-block w-12 h-6 cursor-pointer">
-                          <input type="checkbox" className="opacity-0 w-0 h-0 peer" />
-                          <span className="absolute inset-0 bg-gray-300 rounded-full transition-all duration-400 peer-checked:bg-blue-600 before:absolute before:content-[''] before:h-4.5 before:w-4.5 before:left-0.75 before:bottom-0.75 before:bg-white before:rounded-full before:transition-all before:duration-400 peer-checked:before:translate-x-6"></span>
+                  <div className="pb-8 border-b border-gray-200">
+                    <h2 className="text-xl font-bold text-gray-800 mb-6">Change Password</h2>
+                    <form onSubmit={handlePasswordReset} className="space-y-4">
+                      <div className="flex flex-col gap-2">
+                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                          <Lock size={16} />
+                          Current Password
                         </label>
+                        <div className="relative">
+                          <input
+                            type={showPasswords.current ? "text" : "password"}
+                            value={passwordForm.currentPassword}
+                            onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white pr-10"
+                            placeholder="Enter your current password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            {showPasswords.current ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
+                        </div>
                       </div>
-                    ))}
+
+                      <div className="flex flex-col gap-2">
+                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                          <Lock size={16} />
+                          New Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPasswords.new ? "text" : "password"}
+                            value={passwordForm.newPassword}
+                            onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white pr-10"
+                            placeholder="Enter your new password (min 6 characters)"
+                            required
+                            minLength={6}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            {showPasswords.new ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                          <Lock size={16} />
+                          Confirm New Password
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPasswords.confirm ? "text" : "password"}
+                            value={passwordForm.confirmPassword}
+                            onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 bg-gray-50 focus:outline-none focus:border-blue-600 focus:bg-white pr-10"
+                            placeholder="Confirm your new password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            {showPasswords.confirm ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {passwordError && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                          <p className="text-red-600 text-sm">{passwordError}</p>
+                        </div>
+                      )}
+
+                      {passwordSuccess && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                          <p className="text-green-600 text-sm">{passwordSuccess}</p>
+                        </div>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={isResettingPassword}
+                        className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isResettingPassword ? 'Updating Password...' : 'Update Password'}
+                      </button>
+                    </form>
+                  </div>
+
+                  <div className="pb-8 border-b border-gray-200">
+                    <h2 className="text-xl font-bold text-gray-800 mb-6">Preferences</h2>
+                    <div className="flex flex-col gap-4">
+                      {[
+                        { title: 'Email Notifications', desc: 'Receive email updates about your properties' },
+                        { title: 'Price Alerts', desc: 'Get notified when prices change' },
+                        { title: 'New Listings', desc: 'Receive alerts for new properties' }
+                      ].map((pref, idx) => (
+                        <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                          <div>
+                            <h3 className="font-semibold text-gray-800 mb-1">{pref.title}</h3>
+                            <p className="text-sm text-gray-600">{pref.desc}</p>
+                          </div>
+                          <label className="relative inline-block w-12 h-6 cursor-pointer">
+                            <input type="checkbox" className="opacity-0 w-0 h-0 peer" />
+                            <span className="absolute inset-0 bg-gray-300 rounded-full transition-all duration-400 peer-checked:bg-blue-600 before:absolute before:content-[''] before:h-4.5 before:w-4.5 before:left-0.75 before:bottom-0.75 before:bg-white before:rounded-full before:transition-all before:duration-400 peer-checked:before:translate-x-6"></span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-red-50 p-6 rounded-lg border border-red-200">
+                    <h2 className="text-xl font-bold text-red-800 mb-4">Danger Zone</h2>
+                    <button className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold transition-all duration-300 hover:bg-red-600">
+                      Delete Account
+                    </button>
                   </div>
                 </div>
+              )
+            }
+          </div >
+        </main >
+      </div >
+      {isDetailsOpen && selectedProperty && (
+  <PropertyDetails
+    property={selectedProperty}
+    isOpen={isDetailsOpen}
+    onClose={() => {
+      setIsDetailsOpen(false);
+      setSelectedProperty(null);
+    }}
+  />
+)}
 
-                <div className="bg-red-50 p-6 rounded-lg border border-red-200">
-                  <h2 className="text-xl font-bold text-red-800 mb-4">Danger Zone</h2>
-                  <button className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold transition-all duration-300 hover:bg-red-600">
-                    Delete Account
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
+{isAddListingOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+    <div className="bg-white p-8 rounded-xl w-[700px] max-h-[90vh] overflow-y-auto">
+
+      <h2 className="text-2xl font-bold mb-4">Create New Listing</h2>
+
+      {/* TITLE */}
+      <input
+        className="w-full p-2 border rounded mb-3"
+        placeholder="Title"
+        value={newListing.title}
+        onChange={(e) => setNewListing({ ...newListing, title: e.target.value })}
+      />
+
+      {/* DESCRIPTION */}
+      <textarea
+        className="w-full p-2 border rounded mb-3"
+        placeholder="Description"
+        value={newListing.description}
+        onChange={(e) => setNewListing({ ...newListing, description: e.target.value })}
+      />
+
+      {/* PRICE */}
+      <input
+        className="w-full p-2 border rounded mb-3"
+        placeholder="Price"
+        type="number"
+        value={newListing.price}
+        onChange={(e) => setNewListing({ ...newListing, price: e.target.value })}
+      />
+
+      {/* YEAR */}
+      <input
+        className="w-full p-2 border rounded mb-3"
+        placeholder="Year Built"
+        type="number"
+        value={newListing.yearBuild}
+        onChange={(e) =>
+          setNewListing({ ...newListing, yearBuild: e.target.value })
+        }
+      />
+
+      {/* LOCATION */}
+      <h3 className="font-semibold mt-4">Location</h3>
+      <input className="w-full p-2 border rounded mb-3" placeholder="Street"
+        onChange={(e) => setNewListing({
+          ...newListing,
+          location: { ...newListing.location, street: e.target.value }
+        })}
+      />
+
+      <input className="w-full p-2 border rounded mb-3" placeholder="City"
+        onChange={(e) => setNewListing({
+          ...newListing,
+          location: { ...newListing.location, city: e.target.value }
+        })}
+      />
+
+      <input
+  className="border p-2 rounded w-full"
+  placeholder="Locality"
+  required
+  value={newListing.location.locality}
+  onChange={(e) =>
+    setNewListing({
+      ...newListing,
+      location: { ...newListing.location, locality: e.target.value }
+    })
+  }
+/>
+
+ <select
+  required
+  className="border p-2 rounded w-full"
+  value={newListing.propertyType}
+  onChange={(e) =>
+    setNewListing({ ...newListing, propertyType: e.target.value })
+  }
+>
+  <option value="">Select Property Type</option>
+  <option value="residential">Residential</option>
+  <option value="commercial">Commercial</option>
+  <option value="land">Land</option>
+  <option value="rental">Rental</option>
+</select>
+
+<input className="border p-2 rounded w-full" placeholder="Number of balconies"
+  type="number"
+  required
+  min="0"
+  value={newListing.balconies}
+  onChange={(e) =>
+    setNewListing({ ...newListing, balconies: Number(e.target.value) })
+  }
+  
+/>
+<input className="w-full p-2 border rounded mb-3" placeholder="State"
+  onChange={(e) => setNewListing({
+    ...newListing,
+    location: { ...newListing.location, state: e.target.value }
+  })}
+/>
+
+<input className="w-full p-2 border rounded mb-3" placeholder="Country"
+  onChange={(e) => setNewListing({
+    ...newListing,
+    location: { ...newListing.location, country: e.target.value }
+  })}
+/>
+
+<input className="w-full p-2 border rounded mb-3" placeholder="Zip Code"
+  onChange={(e) => setNewListing({
+    ...newListing,
+    location: { ...newListing.location, zipCode: e.target.value }
+  })}
+/>
+
+<input className="w-full p-2 border rounded mb-3" placeholder="Latitude"
+  onChange={(e) => setNewListing({
+    ...newListing,
+    location: { ...newListing.location, latitude: e.target.value }
+  })}
+/>
+
+<input className="w-full p-2 border rounded mb-3" placeholder="Longitude"
+  onChange={(e) => setNewListing({
+    ...newListing,
+    location: { ...newListing.location, longitude: e.target.value }
+  })}
+/>
+<input
+  type="number"
+  required
+  min="1"
+  value={newListing.size}
+  onChange={(e) =>
+    setNewListing({ ...newListing, size: Number(e.target.value) })
+  }
+  className="border p-2 rounded w-full"
+  placeholder="Enter property size (sq ft)"
+/>
+<input
+  type="number"
+  required
+  min="0"
+  value={newListing.bedrooms}
+  onChange={(e) =>
+    setNewListing({ ...newListing, bedrooms: Number(e.target.value) })
+  }
+  className="border p-2 rounded w-full"
+  placeholder="Number of bedrooms"
+/>
+<input
+  type="number"
+  required
+  min="0"
+  value={newListing.bathrooms}
+  onChange={(e) =>
+    setNewListing({ ...newListing, bathrooms: Number(e.target.value) })
+  }
+  className="border p-2 rounded w-full"
+  placeholder="Number of bathrooms"
+/>
+
+      {/* IMAGES */}
+      <h3 className="font-semibold mt-4">Images</h3>
+      <input
+        type="file"
+        multiple
+        onChange={(e) => setImages([...e.target.files])}
+      />
+
+      {/* SUBMIT BUTTON */}
+      <button
+        onClick={handleSubmitListing}
+        className="w-full py-3 bg-blue-600 text-white rounded-lg mt-4"
+      >
+        Submit Listing
+      </button>
+
+      <button
+        onClick={() => setIsAddListingOpen(false)}
+        className="w-full py-3 bg-gray-300 text-black rounded-lg mt-2"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
     </>
   );
 };

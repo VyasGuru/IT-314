@@ -5,6 +5,11 @@ import { User } from "../models/user.models.js";
 import admin from "firebase-admin";
 import fetch from "node-fetch"; //for reset password and call firebase REST API
 import { sendEmail } from "../utils/sendMail.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+import fs from "fs";
+
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 //register
 const registerUser = asyncHandler(async (req, res) => {
@@ -14,6 +19,10 @@ const registerUser = asyncHandler(async (req, res) => {
 
         if(!firebaseUid || !email || !name || !role || (role === 'lister' && !phone)){ // if user is lister then phone number is required
             throw new ApiError(400, "All fields required");
+        }
+
+        if (email === ADMIN_EMAIL) {
+            throw new ApiError(403, "Registration for the admin account is not allowed. Please login instead.");
         }
 
         const existing = await User.findOne({firebaseUid});
@@ -42,7 +51,6 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 });
 
-
 //login (email + password) 
 //how to add role and phone number is remaing
 const loginUser = asyncHandler(async (req, res) => {
@@ -65,6 +73,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
         let user = await User.findOne({firebaseUid: uid});
 
+        const isAdmin = email === ADMIN_EMAIL;
+
         //if user is present in firebase but not in mongodb then add it
         //firebase store - uid, name, email, password
         if(!user){
@@ -73,10 +83,14 @@ const loginUser = asyncHandler(async (req, res) => {
                     firebaseUid: uid,
                     email,
                     name: decoded.name || "Unnamed User",
-                    role: "visitor",
+                    role: isAdmin ? "admin" : "visitor",
                 }
             );
+        } else if (isAdmin && user.role !== "admin") {
+            user.role = "admin";
+            await user.save();
         }
+
 
         res.status(200).json(
             new ApiResponse(
@@ -118,6 +132,8 @@ const googleLogin = asyncHandler(async (req, res) => {
 
         let user = await User.findOne({firebaseUid: uid});
 
+        const isAdmin = email === ADMIN_EMAIL;
+
         if(!user){
 
             user = await User.create(
@@ -125,9 +141,12 @@ const googleLogin = asyncHandler(async (req, res) => {
                     firebaseUid: uid,
                     email,
                     name,
-                    role: "visitor",
+                    role: isAdmin ? "admin" : "visitor",
                 }
             );
+        } else if (isAdmin && user.role !== "admin") {
+            user.role = "admin";
+            await user.save();
         }
 
         res.status(200).json(
@@ -284,7 +303,7 @@ const forgetPassword = asyncHandler(async (req, res) => {
         const user = await admin.auth().getUserByEmail(email);
 
         if(!user){
-            return new ApiError(404, "Invalid Email. No Account Found");
+            throw new ApiError(404, "Invalid Email. No Account Found");
         }
 
         const resetLink = await admin.auth().generatePasswordResetLink(email);
@@ -293,26 +312,100 @@ const forgetPassword = asyncHandler(async (req, res) => {
             throw new ApiError(500, "Error in generating reset link");
         }
 
-        //it's take 5-6 minute
-        await sendEmail(
-            email,
-            "Reset your password",
-            `
-                <h3>Hello ${user.displayName || "User"},</h3>
-                <p>Click the link below to reset your password:</p>
-                <a href="${resetLink}" target="_blank">Reset Password</a>
-                <br><br>
-                <p>If you did not request this, ignore this email.</p>
-            `
-        );
+        // Try to send email - if email service is not configured, still return success with link
+        try {
+            //it's take 5-6 minute
+            await sendEmail(
+                email,
+                "Reset your password",
+                `
+                    <h3>Hello ${user.displayName || "User"},</h3>
+                    <p>Click the link below to reset your password:</p>
+                    <a href="${resetLink}" target="_blank">Reset Password</a>
+                    <br><br>
+                    <p>If you did not request this, ignore this email.</p>
+                `
+            );
+        } catch (emailError) {
+            // If email fails, log but don't fail the request - user can still use the reset link
+            console.error("Failed to send email (email service may not be configured):", emailError.message);
+            // Continue and return the reset link anyway
+        }
 
         res.status(200).json(
-            new ApiResponse(200, {resetLink} , "Password reset email sent successfully")
+            new ApiResponse(200, {resetLink} , "Password reset link generated successfully. Please check your email for the reset link.")
         );
     } 
     
     catch (err) {
-        throw new ApiError(500, `Error in password recovery. \n Error is : ${err.message}`)
+        // Handle Firebase auth errors specifically
+        if (err.code === 'auth/user-not-found') {
+            throw new ApiError(404, "No account found with this email address.");
+        }
+        throw new ApiError(500, `Error in password recovery. Error: ${err.message}`)
+    }
+});
+
+
+const updateUserDetails = asyncHandler(async (req, res) => {
+    try {
+        const { name, phone } = req.body;
+        const uid = req.user.firebaseUid;
+
+        const user = await User.findOne({ firebaseUid: uid });
+
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        // Handle photo upload if provided
+        let photoUrl = null;
+        if (req.file) {
+            const localFilePath = req.file.path;
+            
+            // Upload to Cloudinary
+            const uploadResponse = await uploadOnCloudinary(localFilePath);
+            
+            // Delete local file after upload
+            if (fs.existsSync(localFilePath)) {
+                fs.unlinkSync(localFilePath);
+            }
+
+            if (!uploadResponse || !uploadResponse.url) {
+                throw new ApiError(500, "Failed to upload photo to Cloudinary");
+            }
+
+            photoUrl = uploadResponse.url;
+
+            // Delete old photo from Cloudinary if it exists
+            if (user.photo) {
+                await deleteFromCloudinary(user.photo);
+            }
+
+            user.photo = photoUrl;
+        }
+
+        // Update name if provided
+        if (name) {
+            user.name = name;
+        }
+
+        // Update phone if provided
+        if (phone) {
+            user.phone = phone;
+        }
+
+        await user.save();
+
+        res.status(200).json(
+            new ApiResponse(200, user, "User details updated successfully")
+        );
+    } catch (err) {
+        // Clean up uploaded file if error occurred
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        throw new ApiError(500, `Error while updating user details. Error is : ${err.message}`);
     }
 });
 
@@ -325,4 +418,5 @@ export{
     getProfile,
     resetPassword,
     forgetPassword,
+    updateUserDetails,
 };

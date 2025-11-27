@@ -225,11 +225,20 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-4 text-center">
-          <p className="text-[#FF4D4D] text-sm">Forgot Password? Contact us via email at<br />support@findmysquare.com</p>
-          <div className="mt-4 bg-[#2b2f33] rounded-lg p-3">
-            <span className="text-gray-400">New user? </span>
-            <Link to="/register" className="text-[#FF4D4D]">Register</Link>
-          </div>
+          <>
+            <Link
+              to={selectedRole === 'admin' ? '/admin/forgot-password' : '/forgot-password'}
+              className="text-[#0066FF] hover:text-[#0052CC] text-sm transition-colors"
+            >
+              Forgot Password?
+            </Link>
+            {selectedRole !== 'admin' && (
+              <div className="mt-4 bg-[#2b2f33] rounded-lg p-3">
+                <span className="text-gray-400">New user? </span>
+                <Link to="/register" className="text-[#FF4D4D]">Register</Link>
+              </div>
+            )}
+          </>
         </div>
       </div>
     </div>
