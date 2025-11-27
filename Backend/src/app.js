@@ -34,6 +34,7 @@ import notificationRoutes from "./routes/notification.routes.js";
 import listerVerificationRoutes from "./routes/listerVerification.routes.js";
 import chatbotRoutes from "./routes/chatbot.routes.js";
 import reviewRoutes from "./routes/review.routes.js";
+import adminListingRoutes from "./routes/adminListing.routes.js";
 
 
 //routes declaration
@@ -55,6 +56,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/lister-verification", listerVerificationRoutes);
 app.use("/api", chatbotRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/admin/listings", adminListingRoutes);
 
 
 //URL created like this after above statement
