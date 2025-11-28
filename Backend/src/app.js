@@ -9,8 +9,8 @@ const app = express();
 // This allows your backend to accept requests from the frontend (like React)
 
 app.use(cors({
-    origin: "http://localhost:5173",     
-    credentials: true,                   
+  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  credentials: true,
 }));
 // Parse incoming JSON data 
 app.use(express.json());
@@ -25,7 +25,7 @@ app.use(cookieParser());
 //routes
 import router from "./routes/property.routes.js";
 import userRoutes from "./routes/user.routes.js";
-import savedListingRoutes  from "./routes/savedListing.routes.js";
+import savedListingRoutes from "./routes/savedListing.routes.js";
 import propertyComparisonRoutes from "./routes/propertyComparison.routes.js";
 import priceEstimatorRoutes from "./routes/priceEstimator.routes.js";
 import adminRoutes from "./routes/adminRoutes.js";
