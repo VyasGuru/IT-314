@@ -9,7 +9,11 @@ const app = express();
 // This allows your backend to accept requests from the frontend (like React)
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  origin: [
+    process.env.CORS_ORIGIN,
+    "http://localhost:5173",
+    "https://it-314.vercel.app"
+  ].filter(Boolean), // Filter out undefined/null values
   credentials: true,
 }));
 // Parse incoming JSON data 
