@@ -50,7 +50,10 @@ const EditListing = () => {
     }, [propertyId]);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value, type } = e.target;
+        if (type === 'number' && Number(value) < 0) {
+            return;
+        }
         setFormData({ ...formData, [name]: value });
     };
 
@@ -105,25 +108,25 @@ const EditListing = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="price" className="block text-sm font-medium text-gray-700">Price</label>
-                        <input type="number" name="price" id="price" value={formData.price || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                        <input type="number" name="price" id="price" value={formData.price || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" min="0" />
                     </div>
                     <div>
                         <label htmlFor="size" className="block text-sm font-medium text-gray-700">Size (sq ft)</label>
-                        <input type="number" name="size" id="size" value={formData.size || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                        <input type="number" name="size" id="size" value={formData.size || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" min="0" />
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label htmlFor="bedrooms" className="block text-sm font-medium text-gray-700">Bedrooms</label>
-                        <input type="number" name="bedrooms" id="bedrooms" value={formData.bedrooms || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                        <input type="number" name="bedrooms" id="bedrooms" value={formData.bedrooms || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" min="0" />
                     </div>
                     <div>
                         <label htmlFor="bathrooms" className="block text-sm font-medium text-gray-700">Bathrooms</label>
-                        <input type="number" name="bathrooms" id="bathrooms" value={formData.bathrooms || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                        <input type="number" name="bathrooms" id="bathrooms" value={formData.bathrooms || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" min="0" />
                     </div>
                     <div>
                         <label htmlFor="balconies" className="block text-sm font-medium text-gray-700">Balconies</label>
-                        <input type="number" name="balconies" id="balconies" value={formData.balconies || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                        <input type="number" name="balconies" id="balconies" value={formData.balconies || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" min="0" />
                     </div>
                 </div>
                 <div>
@@ -138,7 +141,7 @@ const EditListing = () => {
                 </div>
                 <div>
                     <label htmlFor="yearBuild" className="block text-sm font-medium text-gray-700">Year Built</label>
-                    <input type="number" name="yearBuild" id="yearBuild" value={formData.yearBuild || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    <input type="number" name="yearBuild" id="yearBuild" value={formData.yearBuild || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" min="0" />
                 </div>
 
                 <fieldset>
@@ -167,9 +170,18 @@ const EditListing = () => {
                     </div>
                 </fieldset>
                 
-                <button type="submit" className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Update Property
-                </button>
+                <div className="flex justify-end gap-4">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/dashboard')}
+                        className="inline-flex items-center justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                        Cancel
+                    </button>
+                    <button type="submit" className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Update Property
+                    </button>
+                </div>
             </form>
         </div>
     );
