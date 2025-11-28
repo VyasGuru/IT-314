@@ -8,10 +8,25 @@ const app = express();
 // Enable CORS (Cross-Origin Resource Sharing)
 // This allows your backend to accept requests from the frontend (like React)
 
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
-  credentials: true,
-}));
+// Support comma-separated CORS_ORIGIN and allow reflecting origin when '*' is used.
+const rawCors = process.env.CORS_ORIGIN || "http://localhost:5173";
+const allowedOrigins = rawCors.split(",").map((s) => s.trim());
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("CORS policy: Origin not allowed"));
+    },
+    credentials: true,
+  })
+);
 // Parse incoming JSON data 
 app.use(express.json());
 
