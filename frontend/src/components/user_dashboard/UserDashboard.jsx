@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '../landing_page/Header';
 import { PropertyDetails } from '../landing_page/PropertyDetails';
 import { getListingByPropertyId } from '../../services/propertyApi';
+import { getUserProfile, updateUserDetails, resetPassword } from '../../services/userApi';
 import { getSavedListings, removeSavedListing } from '../../services/savedListingApi';
 import { getComparedProperties } from '../../services/comparisonApi';
 import toast from 'react-hot-toast';

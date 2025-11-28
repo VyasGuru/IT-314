@@ -25,16 +25,16 @@ const mapListingStatusToStats = (status) => {
 
 const getFilteredProperties = asyncHandler(async (req, res) => {
     try {
-        const { 
-            minPrice, 
-            maxPrice, 
-            location, 
-            minSize, 
-            maxSize, 
-            bedrooms, 
-            bathrooms, 
-            propertyType, 
-            year_built, 
+        const {
+            minPrice,
+            maxPrice,
+            location,
+            minSize,
+            maxSize,
+            bedrooms,
+            bathrooms,
+            propertyType,
+            year_built,
             amenities,
             searchTerm,
             search,
@@ -73,7 +73,7 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
         if (priceRange) {
             let rangeMin = 0;
             let rangeMax = Infinity;
-            
+
             switch (priceRange) {
                 case "0-100k":
                     rangeMin = 0;
@@ -96,7 +96,7 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
                     rangeMax = Infinity;
                     break;
             }
-            
+
             filter.price = {
                 $gte: rangeMin,
                 ...(rangeMax !== Infinity && { $lte: rangeMax })
@@ -176,9 +176,11 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
                     // Combine search $or with amenities $or using $and
                     filter.$and = [
                         { $or: filter.$or },
-                        { $or: validSelected.map((a) => ({
-                            [`amenities.${a}`]: true,
-                        })) }
+                        {
+                            $or: validSelected.map((a) => ({
+                                [`amenities.${a}`]: true,
+                            }))
+                        }
                     ];
                     delete filter.$or;
                 } else {
@@ -245,10 +247,10 @@ const createProperty = asyncHandler(async (req, res) => {
         throw new ApiError(403, "Please verify your email before listing a property");
     }
 
-    const { 
-        title, description, yearBuild, propertyType, 
-        price, size, bedrooms, bathrooms, balconies, 
-        amenities, location 
+    const {
+        title, description, yearBuild, propertyType,
+        price, size, bedrooms, bathrooms, balconies,
+        amenities, location
     } = req.body;
 
     const requiredFields = [title, description, yearBuild, propertyType, price, size, bedrooms, bathrooms, balconies, amenities, location];
@@ -279,7 +281,7 @@ const createProperty = asyncHandler(async (req, res) => {
     try {
         const amenitiesObject = JSON.parse(amenities);
         const locationObject = JSON.parse(location);
-        
+
         const newProperty = new Property({
             title,
             location: locationObject,
@@ -299,9 +301,9 @@ const createProperty = asyncHandler(async (req, res) => {
         await newProperty.save({ session });
 
         const newListing = new Listing({
-            propertyId: newProperty._id, 
-            listerFirebaseUid: req.user._id, 
-            status: "pending"            
+            propertyId: newProperty._id,
+            listerFirebaseUid: req.user._id,
+            status: "pending"
         });
 
         await newListing.save({ session });
@@ -319,10 +321,10 @@ const createProperty = asyncHandler(async (req, res) => {
 
 // UPDATE PROPERTY DETAILS FUNCTION OF A LISTER
 const updatePropertyDetails = asyncHandler(async (req, res) => {
-    const { propertyId } = req.params; 
-    const { 
-        title, description, yearBuild, propertyType, 
-        price, size, bedrooms, bathrooms, balconies, 
+    const { propertyId } = req.params;
+    const {
+        title, description, yearBuild, propertyType,
+        price, size, bedrooms, bathrooms, balconies,
         amenities, location
     } = req.body;
 
@@ -342,7 +344,7 @@ const updatePropertyDetails = asyncHandler(async (req, res) => {
             })
         );
         const validImageUrls = uploadedImages.filter(url => url !== null);
-        
+
         // Append new images to the existing list
         if (validImageUrls.length > 0) {
             property.images.push(...validImageUrls);
@@ -350,7 +352,7 @@ const updatePropertyDetails = asyncHandler(async (req, res) => {
     }
 
     // 2. Update Fields
-    let newPriceHistory = [...property.priceHistory]; 
+    let newPriceHistory = [...property.priceHistory];
     if (price && Number(price) !== property.price) {
         newPriceHistory.push({ price: Number(price), reason: "Lister updated price" });
         property.price = Number(price);
@@ -382,12 +384,12 @@ const updatePropertyDetails = asyncHandler(async (req, res) => {
 });
 
 const updatePropertyStatus = asyncHandler(async (req, res) => {
-    
+
     // Get the Property's ID from the URL 
-    const { propertyId } = req.params; 
-    
+    const { propertyId } = req.params;
+
     // Get the new status ("active" or "hidden") from the JSON body
-    const { status } = req.body; 
+    const { status } = req.body;
 
     // Make sure the lister is only trying to set a valid status
     if (status !== "active" && status !== "hidden") {
@@ -396,7 +398,7 @@ const updatePropertyStatus = asyncHandler(async (req, res) => {
 
     // Find the 'Listing' (the advertisement) that matches this Property's ID
     const listing = await Listing.findOne({ propertyId: propertyId });
-    
+
     // If we can't find an ad for this house, stop.
     if (!listing) {
         throw new ApiError(404, "Listing for this property not found");
@@ -410,7 +412,7 @@ const updatePropertyStatus = asyncHandler(async (req, res) => {
 
     // This is the "hide" feature
     listing.status = status;
-    
+
     // Save our change to the database
     const updatedListing = await listing.save();
 
@@ -422,7 +424,7 @@ const updatePropertyStatus = asyncHandler(async (req, res) => {
 
 //  DELETE PROPERTY FUNCTION OF LISTER
 const deleteProperty = asyncHandler(async (req, res) => {
-    const { propertyId } = req.params; 
+    const { propertyId } = req.params;
     const { deletionReasons, deletionOtherReason } = req.body;
 
     const property = await Property.findById(propertyId);
@@ -445,7 +447,7 @@ const deleteProperty = asyncHandler(async (req, res) => {
         await property.save({ validateBeforeSave: false });
     }
 
-// Delete images from Cloudinary 
+    // Delete images from Cloudinary 
     if (property.images && property.images.length > 0) {
         const deletePromises = property.images.map(imageUrl => deleteFromCloudinary(imageUrl));
         await Promise.all(deletePromises); // Wait for all images to be deleted
@@ -585,7 +587,10 @@ const getUserListings = asyncHandler(async (req, res) => {
 
 const getListingByPropertyId = asyncHandler(async (req, res) => {
     const { propertyId } = req.params;
-    const listing = await Listing.findOne({ propertyId: propertyId });
+    const listing = await Listing.findOne({ propertyId: propertyId }).populate({
+        path: "listerFirebaseUid",
+        select: "name email photo phone role"
+    });
     if (!listing) {
         throw new ApiError(404, "Listing not found for this property");
     }
