@@ -134,3 +134,8 @@ export const deleteProperty = async (propertyId) => {
   return response.data;
 };
 
+// Get listing by property ID
+export const getListingByPropertyId = async (propertyId) => {
+  const response = await api.get(`/properties/listings/by-property/${propertyId}`);
+  return response.data;
+};

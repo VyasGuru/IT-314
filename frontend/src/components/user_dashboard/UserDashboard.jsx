@@ -5,12 +5,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../landing_page/Header';
 import { PropertyDetails } from '../landing_page/PropertyDetails';
-import { getUserProfile, updateUserDetails, resetPassword } from '../../services/userApi';
+import { getListingByPropertyId } from '../../services/propertyApi';
 import { getSavedListings, removeSavedListing } from '../../services/savedListingApi';
 import { getComparedProperties } from '../../services/comparisonApi';
+import toast from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 import { getUserNotifications, markUserNotificationAsRead } from '../../services/notificationApi';
 import { formatLocation } from '../../utils/formatLocation';
 import MyListings from './MyListings';
+import { estimatePriceService } from '../../services/priceEstimatorService';
 import {
   User,
   Heart,
@@ -369,6 +372,76 @@ const UserDashboard = () => {
       console.error("Error unsaving property:", err);
     }
   };
+
+  const handleEstimatePrice = async (propertyId) => {
+    if (!propertyId) {
+      toast.error("Property ID not available for price estimation.", {
+        duration: 5000,
+        style: {
+          border: '1px solid #713200',
+          padding: '16px',
+          color: '#713200',
+        },
+      });
+      return;
+    }
+    try {
+      const listingResponse = await getListingByPropertyId(propertyId);
+      const listingId = listingResponse?.data?._id;
+
+      if (!listingId) {
+        toast.error("Could not find a listing associated with this property.", {
+          duration: 5000,
+          style: {
+            border: '1px solid #713200',
+            padding: '16px',
+            color: '#713200',
+          },
+        });
+        return;
+      }
+
+      const response = await estimatePriceService(listingId);
+      if (response.estimatedPrice) {
+        toast.success(`Estimated Selling Price: ₹${response.estimatedPrice.toLocaleString('en-IN')}`, {
+          duration: 5000,
+          style: {
+            border: '1px solid #713200',
+            padding: '16px',
+            color: '#713200',
+          },
+        });
+      } else if (response.estimatedRent) {
+        toast.success(`Estimated Rent Price: ₹${response.estimatedRent.toLocaleString('en-IN')}`, {
+          duration: 5000,
+          style: {
+            border: '1px solid #713200',
+            padding: '16px',
+            color: '#713200',
+          },
+        });
+      } else {
+        toast(response.message || "Could not estimate price for this property.", {
+          duration: 5000,
+          style: {
+            border: '1px solid #713200',
+            padding: '16px',
+            color: '#713200',
+          },
+        });
+      }
+    } catch (error) {
+      toast.error(`Error estimating price: ${error.response?.data?.message || error.message}`, {
+        duration: 5000,
+        style: {
+          border: '1px solid #713200',
+          padding: '16px',
+          color: '#713200',
+        },
+      });
+    }
+  };
+
 
 
 
@@ -747,6 +820,11 @@ const UserDashboard = () => {
                               onClick={() => handleViewDetails(property.listingId || property.id)}
                               className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
                               View Details
+                            </button>
+                            <button
+                              onClick={() => handleEstimatePrice(property.listingId)}
+                              className="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md mt-2">
+                              Estimate Price
                             </button>
                           </div>
                         </div>

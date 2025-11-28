@@ -111,7 +111,10 @@ const AddListing = () => {
     }, [isEmailVerified]);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value, type } = e.target;
+        if (type === 'number' && Number(value) < 0) {
+            return;
+        }
         setFormData((prev) => ({ ...prev, [name]: value }));
         if (error) setError(null);
     };
@@ -306,10 +309,11 @@ const AddListing = () => {
                                         required
                                     >
                                         <option value="">Select Property Type</option>
-                                        <option value="residential">Residential</option>
+                                        <option value="residential">House</option>
                                         <option value="commercial">Commercial</option>
                                         <option value="land">Land</option>
-                                        <option value="rental">Rental</option>
+                                        <option value="land">Villa</option>
+                                        <option value="rental">Apartment</option>
                                     </select>
                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                         <ChevronDown className="h-5 w-5 text-gray-400" />
@@ -407,7 +411,14 @@ const AddListing = () => {
                             </div>
                         )}
 
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-4">
+                            <button
+                                type="button"
+                                onClick={() => navigate('/dashboard')}
+                                className="inline-flex items-center justify-center py-3 px-8 border border-gray-300 shadow-sm text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            >
+                                Cancel
+                            </button>
                             <button
                                 type="submit"
                                 className="inline-flex items-center justify-center py-3 px-8 border border-transparent shadow-md text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
