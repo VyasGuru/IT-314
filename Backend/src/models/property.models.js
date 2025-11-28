@@ -204,6 +204,11 @@ const propertySchema = new mongoose.Schema(
 
     },
 
+    deletionReasons: {
+      type: [String],
+      default: undefined,
+    },
+
   },
 
   {
