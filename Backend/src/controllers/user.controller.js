@@ -48,9 +48,15 @@ const registerUser = asyncHandler(async (req, res) => {
             throw new ApiError(403, "Registration for the admin account is not allowed. Please login instead.");
         }
 
-        const existing = await User.findOne({firebaseUid});
-        if(existing){
-            throw new ApiError(400, "User already exists");
+        // Check if user already exists - if so, just return it (recovery from previous failed attempt)
+        let user = await User.findOne({firebaseUid});
+        if(user){
+            console.log("✓ User already exists, returning existing user:", user._id);
+            console.log("=============================");
+            // User already exists, just return it - they may be completing a partial registration
+            return res.status(201).json(
+                new ApiResponse(201, user, "User registration completed (or already existed)")
+            );
         }
 
         const userData = {
@@ -66,7 +72,7 @@ const registerUser = asyncHandler(async (req, res) => {
         }
 
         console.log("Creating user with data:", JSON.stringify(userData, null, 2));
-        const user = await User.create(userData);
+        user = await User.create(userData);
         console.log("✓ User created:", user._id);
         console.log("=============================");
 
