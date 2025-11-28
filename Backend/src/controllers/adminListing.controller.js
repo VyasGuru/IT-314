@@ -45,17 +45,26 @@ const deleteListings = asyncHandler(async (req, res) => {
 
     // Build notification message
     const chosenReasons = (Array.isArray(reasons) ? reasons : []).map((r) => REASON_LABELS[r] || r);
-    const reasonsText = chosenReasons.length > 0 ? chosenReasons.map((r) => `- ${r}`).join("\n") : "- No reason provided";
-    const otherText = otherReason ? `\nOther: ${otherReason}` : "";
+    const combinedReasons = [...chosenReasons];
+    if (otherReason && otherReason.trim()) {
+      combinedReasons.push(otherReason.trim());
+    }
 
-    const message = `Your listing \"${property.title}\" has been removed for the following reason(s):\n${reasonsText}${otherText}\n\nIf you have any further queries, please contact the Admin.`;
+    const reasonsText = combinedReasons.length > 0
+      ? combinedReasons.map((r) => `- ${r}`).join("\n")
+      : "- No reason provided";
+
+    property.deletionReasons = combinedReasons;
+
+    const message = `Your listing \"${property.title}\" has been removed for the following reason(s):\n${reasonsText}\n\nIf you have any query, contact the admin.`;
 
     try {
       // Delete  reviews
       const propertyIdString = property._id.toString();
       await Review.deleteMany({ target_id: propertyIdString, target_type: "property" });
 
-      // Delete the database records
+      await property.save();
+
       await Property.findByIdAndDelete(property._id);
       await Listing.findByIdAndDelete(listing._id);
 
@@ -67,6 +76,7 @@ const deleteListings = asyncHandler(async (req, res) => {
         type: "admin_notification",
         metadata: {
           propertyId: property._id,
+          deletionReasons: combinedReasons,
         },
       });
 

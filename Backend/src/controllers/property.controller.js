@@ -423,12 +423,27 @@ const updatePropertyStatus = asyncHandler(async (req, res) => {
 //  DELETE PROPERTY FUNCTION OF LISTER
 const deleteProperty = asyncHandler(async (req, res) => {
     const { propertyId } = req.params; 
+    const { deletionReasons, deletionOtherReason } = req.body;
 
     const property = await Property.findById(propertyId);
     if (!property) throw new ApiError(404, "Property not found");
 
     const listing = await Listing.findOne({ propertyId: property._id });
     if (!listing) throw new ApiError(404, "Listing for this property not found");
+
+    const reasonsArray = Array.isArray(deletionReasons) ? deletionReasons : [];
+    const normalizedReasons = reasonsArray
+        .map((reason) => (typeof reason === "string" ? reason.trim() : ""))
+        .filter(Boolean);
+
+    if (typeof deletionOtherReason === "string" && deletionOtherReason.trim()) {
+        normalizedReasons.push(deletionOtherReason.trim());
+    }
+
+    if (normalizedReasons.length > 0) {
+        property.deletionReasons = normalizedReasons;
+        await property.save({ validateBeforeSave: false });
+    }
 
 // Delete images from Cloudinary 
     if (property.images && property.images.length > 0) {
@@ -442,7 +457,7 @@ const deleteProperty = asyncHandler(async (req, res) => {
     await Listing.findByIdAndDelete(listing._id);
 
     return res.status(200).json(
-        new ApiResponse(200, {}, "Property, listing, reviews, and images deleted")
+        new ApiResponse(200, { deletionReasons: normalizedReasons }, "Property, listing, reviews, and images deleted")
     );
 });
 
@@ -568,6 +583,15 @@ const getUserListings = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, userListings, "User listings retrieved successfully"));
 });
 
+const getListingByPropertyId = asyncHandler(async (req, res) => {
+    const { propertyId } = req.params;
+    const listing = await Listing.findOne({ propertyId: propertyId });
+    if (!listing) {
+        throw new ApiError(404, "Listing not found for this property");
+    }
+    res.status(200).json(new ApiResponse(200, listing, "Listing found"));
+});
+
 export {
     getFilteredProperties,
     createProperty,
@@ -576,4 +600,5 @@ export {
     deleteProperty,
     reviewPropertyStatus,
     getUserListings,
+    getListingByPropertyId,
 }

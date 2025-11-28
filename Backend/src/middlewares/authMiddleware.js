@@ -206,6 +206,6 @@ export {
   verifyFirebaseToken, 
     verifyLister,
     verifyAdmin,
-    isVerifiedLister,
+    isVerifiedLister,                       
     attachFirebaseUser
 };
