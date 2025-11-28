@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import ScrollToTop from "./components/ScrollToTop";
+import PreventBackNavigation from "./components/PreventBackNavigation";
 import { SavedListingsProvider } from "./contexts/SavedListingsContext";
 
 import { Header } from "./components/landing_page/Header";
@@ -10,6 +11,7 @@ import AboutPage from "./components/about_page/AboutPage";
 import ContactPage from "./components/contact_page/ContactPage";
 import LoginPage from "./components/login_page/LoginPage";
 import RegisterPage from "./components/login_page/RegisterPage";
+import VerifyEmailPage from "./components/login_page/VerifyEmailPage";
 import ForgotPasswordPage from "./components/login_page/ForgotPasswordPage";
 import AdminForgotPasswordPage from "./components/login_page/AdminForgotPasswordPage";
 import UserDashboard from "./components/user_dashboard/UserDashboard";
@@ -37,6 +39,7 @@ export default function App() {
   return (
     <SavedListingsProvider>
       <div className="min-h-screen bg-background">
+        <PreventBackNavigation />
         <ScrollToTop />
         <Routes>
           <Route
@@ -76,6 +79,13 @@ export default function App() {
               <div className="min-h-screen bg-white flex items-center justify-center">
                 <RegisterPage />
               </div>
+            }
+          />
+
+          <Route
+            path="/verify-email"
+            element={
+              <VerifyEmailPage />
             }
           />
 

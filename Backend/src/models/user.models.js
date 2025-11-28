@@ -28,12 +28,13 @@ const userSchema = new mongoose.Schema(
 
         role: {
             type: String,
-            enum: ['visitor', 'buyer', 'renter', 'lister', 'admin'], //role only one of this
+            enum: ['user', 'lister', 'admin'],
             required: true
         },
 
         phone: {
             type: String,
+            default: null,
             required: function () {      //if user is lister then phone number is required
                 return this.role === "lister";
             }, 
@@ -41,11 +42,13 @@ const userSchema = new mongoose.Schema(
             //validate format of phone numbers that correct or not
             validate: {
                 validator: function (num) {
-                    if(!num || /^\d{10}$/.test(num)) return 1;
-                    return 0;
+                    // Skip validation if phone is not provided (null, undefined, or empty string)
+                    if (!num || num.trim().length === 0) return true;
+                    // If phone is provided, it must be exactly 10 digits
+                    return /^\d{10}$/.test(num.trim());
                 },
 
-                message: (props) => `${props.value} is not a valid phone number!`, // props.value is number that user enter 
+                message: (props) => `${props.value} is not a valid phone number! Please provide exactly 10 digits.`, 
             },
         },
 
@@ -72,6 +75,21 @@ const userSchema = new mongoose.Schema(
 
         photo: {
             type: String,
+            default: null,
+        },
+
+        emailVerified: {
+            type: Boolean,
+            default: false,
+        },
+
+        emailVerificationToken: {
+            type: String,
+            default: null,
+        },
+
+        emailVerificationExpires: {
+            type: Date,
             default: null,
         },
     },

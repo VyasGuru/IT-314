@@ -11,14 +11,31 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Request interceptor to add Firebase token to all requests
+// List of public endpoints that don't need authentication
+const publicEndpoints = [
+  '/users/register',
+  '/users/login',
+  '/users/google-login',
+  '/users/forgot-password',
+  '/users/verify-email',
+];
+
+// Request interceptor to add Firebase token to requests (except public endpoints)
 api.interceptors.request.use(
   async (config) => {
     try {
-      const user = auth.currentUser;
-      if (user) {
-        const token = await user.getIdToken();
-        config.headers.Authorization = `Bearer ${token}`;
+      // Check if this is a public endpoint
+      const isPublicEndpoint = publicEndpoints.some(
+        (endpoint) => config.url.includes(endpoint)
+      );
+
+      // Only add token for protected endpoints
+      if (!isPublicEndpoint) {
+        const user = auth.currentUser;
+        if (user) {
+          const token = await user.getIdToken();
+          config.headers.Authorization = `Bearer ${token}`;
+        }
       }
     } catch (error) {
       console.error("Error getting auth token:", error);
@@ -48,6 +65,14 @@ api.interceptors.response.use(
     if (error.message === 'Network Error' || !error.response) {
       console.error("Network error - Cannot connect to backend server");
       error.message = "Cannot connect to backend server. Please ensure the backend is running on http://localhost:8000";
+    }
+    
+    // Handle 400 Bad Request - include backend error message
+    if (error.response?.status === 400) {
+      const backendMessage = error.response.data?.message || error.response.data?.error || "Invalid request";
+      console.error("Bad Request (400):", backendMessage);
+      console.error("Full error response:", JSON.stringify(error.response.data, null, 2));
+      error.message = backendMessage;
     }
     
     // Handle 401 Unauthorized - token expired or invalid

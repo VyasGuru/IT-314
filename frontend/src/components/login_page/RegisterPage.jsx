@@ -7,6 +7,7 @@ export default function RegisterPage() {
   const [selectedRole, setSelectedRole] = useState(null); // 'admin' or 'user'
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -88,21 +89,20 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await registerWithEmailPassword(email, password, name, selectedRole);
+      await registerWithEmailPassword(email, password, name, selectedRole, phone);
       navigate("/");
     } catch (error) {
-        switch (error.code) {
-          case "auth/email-already-in-use":
-            setError("This email is already registered.");
-            break;
-          case "auth/invalid-email":
-            setError("Invalid email address.");
-            break;
-          case "auth/weak-password":
-            setError("Password is too weak.");
-            break;
-          default:
-            setError(error.message || "Failed to create account. Please try again.");
+        // Prioritize error message if available (custom messages from AuthContext)
+        if (error.message) {
+          setError(error.message);
+        } else if (error.code === "auth/email-already-in-use") {
+          setError("This email is already registered. Please log in instead.");
+        } else if (error.code === "auth/invalid-email") {
+          setError("Invalid email address.");
+        } else if (error.code === "auth/weak-password") {
+          setError("Password is too weak. Please use at least 6 characters.");
+        } else {
+          setError("Failed to create account. Please try again.");
         }
     } finally {
       setLoading(false);
@@ -114,6 +114,7 @@ export default function RegisterPage() {
     setGoogleLoading(true);
     try {
       await signInWithGoogle(selectedRole);
+      // Note: phone number is optional and can be added after signup via profile update
       navigate("/");
     } catch (error) {
       if (error.message && error.message.includes("registered as")) {
@@ -174,6 +175,20 @@ export default function RegisterPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-[#2b2f33] border-none rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="phone" className="text-white text-base block mb-2">
+              Phone Number (Optional)
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 (555) 000-0000"
               className="w-full bg-[#2b2f33] border-none rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
             />
           </div>

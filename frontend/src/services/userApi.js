@@ -8,28 +8,42 @@ import api from "./api";
 // Register user with backend after Firebase authentication
 export const registerUser = async (userData) => {
   const { firebaseUid, email, name, role, phone } = userData;
-  const response = await api.post("/users/register", {
+  const payload = {
     firebaseUid,
     email,
     name,
     role,
-    phone,
-  });
+  };
+  
+  // Only include phone if provided and not just whitespace
+  if (phone && phone.trim().length > 0) {
+    payload.phone = phone.trim();
+  }
+  
+  console.log("=== REGISTRATION PAYLOAD ===");
+  console.log("Raw input:", userData);
+  console.log("Payload being sent:", JSON.stringify(payload, null, 2));
+  console.log("Endpoint: /users/register");
+  console.log("============================");
+  
+  const response = await api.post("/users/register", payload);
   return response.data;
 };
 
 // Login user with backend using Firebase token
-export const loginUser = async (firebaseToken) => {
+export const loginUser = async (firebaseToken, role = "user") => {
   const response = await api.post("/users/login", {
     token: firebaseToken,
+    role,
   });
   return response.data;
 };
 
 // Google login with backend
-export const googleLogin = async (firebaseToken) => {
+export const googleLogin = async (firebaseToken, role = "user") => {
   const response = await api.post("/users/google-login", {
     token: firebaseToken,
+    role,
   });
   return response.data;
 };
@@ -87,3 +101,17 @@ export const updateUserDetails = async (name, phone, photoFile = null) => {
   return response.data;
 };
 
+// Send email verification
+export const sendEmailVerification = async () => {
+  const response = await api.post("/users/send-verification-email");
+  return response.data;
+};
+
+// Verify email with token
+export const verifyEmail = async (token, uid) => {
+  const response = await api.post("/users/verify-email", {
+    token,
+    uid,
+  });
+  return response.data;
+};

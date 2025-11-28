@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Listing } from "../models/listing.models.js";
 import { Review } from "../models/review.models.js";
+import { User } from "../models/user.models.js";
 import mongoose from "mongoose";
 import { createAdminNotification, createListerNotification } from "../services/notification.service.js";
 import { recordPropertyUpload, recordStatusChange } from "../services/stats.service.js";
@@ -234,6 +235,16 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
 
 // CREATE PROPERTY FUNCTION OF A LISTER
 const createProperty = asyncHandler(async (req, res) => {
+    // Check if user email is verified
+    const user = await User.findOne({ firebaseUid: req.user.firebaseUid });
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    if (!user.emailVerified) {
+        throw new ApiError(403, "Please verify your email before listing a property");
+    }
+
     const { 
         title, description, yearBuild, propertyType, 
         price, size, bedrooms, bathrooms, balconies, 

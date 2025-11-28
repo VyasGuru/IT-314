@@ -7,6 +7,7 @@ import fetch from "node-fetch"; //for reset password and call firebase REST API
 import { sendEmail } from "../utils/sendMail.js";
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import fs from "fs";
+import crypto from "crypto";
 
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
@@ -15,10 +16,32 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const registerUser = asyncHandler(async (req, res) => {
 
     try{
-        const {firebaseUid, email, name, role, phone} = req.body;
+        console.log("=== REGISTRATION REQUEST ===");
+        console.log("Request body:", JSON.stringify(req.body, null, 2));
+        
+        let {firebaseUid, email, name, role, phone} = req.body;
 
-        if(!firebaseUid || !email || !name || !role || (role === 'lister' && !phone)){ // if user is lister then phone number is required
-            throw new ApiError(400, "All fields required");
+        if(!firebaseUid || !email || !name || !role){ 
+            throw new ApiError(400, "firebaseUid, email, name, and role are required");
+        }
+
+        // Validate role
+        if (!['user', 'lister', 'admin'].includes(role)) {
+            throw new ApiError(400, "Role must be one of: user, lister, admin");
+        }
+
+        // Phone is required for lister role
+        if (role === 'lister' && (!phone || phone.trim().length === 0)) {
+            throw new ApiError(400, "Phone number is required for lister account");
+        }
+
+        // Trim phone if provided
+        if (phone) {
+            phone = phone.trim();
+            // Validate phone format if provided
+            if (phone.length > 0 && !/^\d{10}$/.test(phone)) {
+                throw new ApiError(400, "Phone number must be exactly 10 digits");
+            }
         }
 
         if (email === ADMIN_EMAIL) {
@@ -30,16 +53,22 @@ const registerUser = asyncHandler(async (req, res) => {
             throw new ApiError(400, "User already exists");
         }
 
-        const user = await User.create(
-            {
-                firebaseUid,
-                email,
-                name,
-                role,
-                phone
-            }
-        );
+        const userData = {
+            firebaseUid,
+            email,
+            name,
+            role,
+        };
 
+        // Only include phone if it was provided
+        if (phone && phone.length > 0) {
+            userData.phone = phone;
+        }
+
+        console.log("Creating user with data:", JSON.stringify(userData, null, 2));
+        const user = await User.create(userData);
+        console.log("✓ User created:", user._id);
+        console.log("=============================");
 
         res.status(201).json(
             new ApiResponse(201, user, "User registered")
@@ -47,7 +76,14 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     catch(err){
-        throw new ApiError(500, `Error while register. Error is : ${err.message}`);
+            console.error("✗ Registration error:", err.message);
+            console.error("Full error:", err);
+            console.log("=============================");
+            // Preserve ApiError status codes; if it's already an ApiError rethrow it
+            if (err instanceof ApiError) {
+                throw err;
+            }
+            throw new ApiError(500, `Error while register. Error is : ${err.message}`);
     }
 });
 
@@ -83,7 +119,7 @@ const loginUser = asyncHandler(async (req, res) => {
                     firebaseUid: uid,
                     email,
                     name: decoded.name || "Unnamed User",
-                    role: isAdmin ? "admin" : "visitor",
+                    role: isAdmin ? "admin" : "user",
                 }
             );
         } else if (isAdmin && user.role !== "admin") {
@@ -141,7 +177,7 @@ const googleLogin = asyncHandler(async (req, res) => {
                     firebaseUid: uid,
                     email,
                     name,
-                    role: isAdmin ? "admin" : "visitor",
+                    role: isAdmin ? "admin" : "user",
                 }
             );
         } else if (isAdmin && user.role !== "admin") {
@@ -333,7 +369,7 @@ const forgetPassword = asyncHandler(async (req, res) => {
         }
 
         res.status(200).json(
-            new ApiResponse(200, {resetLink} , "Password reset link generated successfully. Please check your email for the reset link.")
+            new ApiResponse(200, { resetLink } , "Password reset link generated successfully. Check your email or use the link below.")
         );
     } 
     
@@ -410,7 +446,217 @@ const updateUserDetails = asyncHandler(async (req, res) => {
 });
 
 
-export{
+// Reset email verification (for testing/debugging)
+const resetEmailVerification = asyncHandler(async (req, res) => {
+    const { uid } = req.body;
+
+    if (!uid) {
+        throw new ApiError(400, "UID is required");
+    }
+
+    const user = await User.findOne({ firebaseUid: uid });
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    user.emailVerified = false;
+    user.emailVerificationToken = null;
+    user.emailVerificationExpires = null;
+
+    await user.save();
+
+    res.status(200).json(
+        new ApiResponse(200, { user }, "Email verification reset successfully")
+    );
+});
+
+const sendEmailVerification = asyncHandler(async (req, res) => {
+    const uid = req.user.firebaseUid;
+    console.log("sendEmailVerification: Starting for uid:", uid);
+
+    const user = await User.findOne({ firebaseUid: uid });
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    // Allow resending even if already verified (for cases where user wants to re-verify)
+    // Only show a warning if already verified
+    const isAlreadyVerified = user.emailVerified;
+
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
+
+    // Set token and expiration (24 hours)
+    user.emailVerificationToken = hashedToken;
+    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await user.save();
+
+    // Create verification link
+    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}&uid=${uid}`;
+    console.log("Verification link created:", verificationLink);
+
+    // Send verification email
+    try {
+        console.log("Attempting to send email to:", user.email);
+        await sendEmail(
+            user.email,
+            "Verify Your Email - FindMySquare",
+            `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2>Welcome to FindMySquare!</h2>
+                    <p>Hello ${user.name},</p>
+                    <p>Thank you for registering. Please verify your email address by clicking the button below:</p>
+                    <div style="margin: 30px 0;">
+                        <a href="${verificationLink}" style="background-color: #0066FF; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Verify Email</a>
+                    </div>
+                    <p>Or copy this link: <a href="${verificationLink}">${verificationLink}</a></p>
+                    <p>This link will expire in 24 hours.</p>
+                    <p>If you didn't create this account, please ignore this email.</p>
+                    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">FindMySquare Team</p>
+                </div>
+            `
+        );
+        console.log("Email sent successfully to:", user.email);
+    } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+        console.log("Email sending failed but token saved. User can manually verify using:", verificationLink);
+    }
+
+    res.status(200).json(
+        new ApiResponse(200, { verificationLink }, isAlreadyVerified ? "Verification email sent again. You are already verified but can re-verify if needed." : "Verification email sent successfully. Check your inbox or use the link above.")
+    );
+});
+
+// Verify email with token
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { token, uid } = req.body;
+
+  if (!token || !uid) {
+    throw new ApiError(400, "Token and UID are required");
+  }
+
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+  const user = await User.findOne({
+    firebaseUid: uid,
+    emailVerificationToken: hashedToken,
+    emailVerificationExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    // Check if the user exists but the token is wrong/expired
+    const existingUser = await User.findOne({ firebaseUid: uid });
+    if (existingUser && existingUser.emailVerified) {
+      return res
+        .status(200)
+        .json(new ApiResponse(200, { user: existingUser }, "Email already verified."));
+    }
+    throw new ApiError(400, "Invalid or expired verification token");
+  }
+
+  user.emailVerified = true;
+  user.emailVerificationToken = undefined;
+  user.emailVerificationExpires = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json(new ApiResponse(200, { user }, "Email verified successfully"));
+});
+
+//get all users
+const getAllUsers = asyncHandler(async (req, res) => {
+    try {
+        const users = await User.find({}).select("-__v -password"); // Exclude sensitive fields
+
+        res.status(200).json(
+            new ApiResponse(200, users, "Users retrieved successfully")
+        );
+    } catch (err) {
+        throw new ApiError(500, `Error while fetching users. Error is : ${err.message}`);
+    }
+});
+
+//get user by uid
+const getUserByUid = asyncHandler(async (req, res) => {
+    try {
+        const { uid } = req.params;
+
+        const user = await User.findOne({ firebaseUid: uid }).select("-__v -password"); // Exclude sensitive fields
+
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        res.status(200).json(
+            new ApiResponse(200, user, "User retrieved successfully")
+        );
+    } catch (err) {
+        throw new ApiError(500, `Error while fetching user. Error is : ${err.message}`);
+    }
+});
+
+//update user by uid
+const updateUserByUid = asyncHandler(async (req, res) => {
+    try {
+        const { uid } = req.params;
+        const { name, email, role, phone } = req.body;
+
+        const user = await User.findOne({ firebaseUid: uid });
+
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        // Update fields
+        if (name) {
+            user.name = name;
+        }
+        if (email) {
+            user.email = email;
+        }
+        if (role) {
+            user.role = role;
+        }
+        if (phone) {
+            user.phone = phone;
+        }
+
+        await user.save();
+
+        res.status(200).json(
+            new ApiResponse(200, user, "User updated successfully")
+        );
+    } catch (err) {
+        throw new ApiError(500, `Error while updating user. Error is : ${err.message}`);
+    }
+});
+
+//delete user by uid
+const deleteUserByUid = asyncHandler(async (req, res) => {
+    try {
+        const { uid } = req.params;
+
+        const user = await User.findOne({ firebaseUid: uid });
+
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        await user.remove();
+
+        res.status(200).json(
+            new ApiResponse(200, null, "User deleted successfully")
+        );
+    } catch (err) {
+        throw new ApiError(500, `Error while deleting user. Error is : ${err.message}`);
+    }
+});
+
+export {
     registerUser,
     loginUser,
     googleLogin,
@@ -419,4 +665,12 @@ export{
     resetPassword,
     forgetPassword,
     updateUserDetails,
+    sendEmailVerification,
+    verifyEmail,
+    getAllUsers,
+    getUserByUid,
+    updateUserByUid,
+    deleteUserByUid,
+    resetEmailVerification,
 };
+
