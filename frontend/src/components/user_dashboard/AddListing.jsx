@@ -142,12 +142,8 @@ const AddListing = () => {
         }));
     };
 
-    const handleImageChange = (e) => {
-        const files = Array.from(e.target.files);
-        setImages(files);
-        setImagePreviews(files.map((file) => URL.createObjectURL(file)));
-        if (error) setError(null);
-    };
+
+
 
     const isValidDate = (dateString) => {
         const datePattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
@@ -168,6 +164,22 @@ const AddListing = () => {
         if (year < 1800 || year > currentYear + 5) return false;
 
         return true;
+    };
+
+    const handleImageChange = (e) => {
+        const files = Array.from(e.target.files);
+        setImages(prev => [...prev, ...files]);
+
+        const newPreviews = files.map(file => URL.createObjectURL(file));
+        setImagePreviews(prev => [...prev, ...newPreviews]);
+        if (error) setError(null);
+    };
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            document.getElementById('images').click();
+        }
     };
 
     const handleDateBlur = (e) => {
@@ -344,9 +356,26 @@ const AddListing = () => {
 
                         <div className="bg-white p-6 rounded-xl shadow-md">
                             <h2 className="text-3xl font-bold text-gray-900 mb-6">Property Images</h2>
-                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition">
-                                <input type="file" name="images" id="images" onChange={handleImageChange} multiple className="hidden" accept="image/*" />
-                                <label htmlFor="images" className="cursor-pointer">
+                            <div
+                                className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
+                            >
+                                <input
+                                    type="file"
+                                    name="images"
+                                    id="images"
+                                    onChange={handleImageChange}
+                                    multiple
+                                    className="sr-only"
+                                    accept="image/*"
+                                />
+                                <label
+                                    htmlFor="images"
+                                    className="cursor-pointer block w-full h-full outline-none"
+                                    onKeyDown={handleKeyDown}
+                                    tabIndex="0"
+                                    role="button"
+                                    aria-label="Upload property images"
+                                >
                                     <ImagePlus className="mx-auto h-12 w-12 text-gray-400" />
                                     <p className="mt-2 text-sm text-gray-600">
                                         <span className="font-semibold text-blue-600">Upload files</span> or drag and drop

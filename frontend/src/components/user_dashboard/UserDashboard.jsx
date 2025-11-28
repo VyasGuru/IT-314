@@ -34,8 +34,35 @@ import {
   TrendingUp,
   Share2,
   Menu, // Import Menu icon for hamburger
-  X // Import X for close
+  X, // Import X for close
+  RefreshCcw // Import Refresh icon
+
 } from 'lucide-react';
+
+const formatCurrency = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "N/A";
+  }
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
+const ComparisonTableRow = ({ label, values }) => (
+  <div
+    className="grid gap-4 py-4 border-b last:border-b-0"
+    style={{ gridTemplateColumns: `200px repeat(${values.length}, minmax(200px, 1fr))` }}
+  >
+    <div className="text-sm font-semibold text-gray-500">{label}</div>
+    {values.map((value, index) => (
+      <div key={`${label}-${index}`} className="text-sm text-gray-900">
+        {value}
+      </div>
+    ))}
+  </div>
+);
 
 const UserDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for sidebar
@@ -72,43 +99,99 @@ const UserDashboard = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAddListingOpen, setIsAddListingOpen] = useState(false);
   const [newListing, setNewListing] = useState({
-  title: "",
-  description: "",
-  yearBuild: "",
-  propertyType: "",
-  price: "",
-  size: "",
-  bedrooms: "",
-  bathrooms: "",
-  balconies: "",
-  amenities: {
-    parking: false,
-    gym: false,
-    swimmingPool: false,
-    wifi: false,
-    security: false,
-    powerBackup: false,
-    garden: false,
-    lift: false,
-    clubhouse: false,
-    playArea: false,
-    furnished: false
-  },
-  location: {
-    street: "",
-    city: "",
-    state: "",
-    country: "",
-    locality: "",
-    zipCode: "",
-    latitude: "",
-    longitude: ""
-  },
-  images: []
-});
+    title: "",
+    description: "",
+    yearBuild: "",
+    propertyType: "",
+    price: "",
+    size: "",
+    bedrooms: "",
+    bathrooms: "",
+    balconies: "",
+    amenities: {
+      parking: false,
+      gym: false,
+      swimmingPool: false,
+      wifi: false,
+      security: false,
+      powerBackup: false,
+      garden: false,
+      lift: false,
+      clubhouse: false,
+      playArea: false,
+      furnished: false
+    },
+    location: {
+      street: "",
+      city: "",
+      state: "",
+      country: "",
+      locality: "",
+      zipCode: "",
+      latitude: "",
+      longitude: ""
+    },
+    images: []
+  });
   const [images, setImages] = useState([]);
-  
 
+  const attributeRows = [
+    {
+      label: "Price",
+      getValue: (property) => property?.price || "N/A", // Price is already formatted in dashboard data usually, but let's check
+    },
+    {
+      label: "Location",
+      getValue: (property) => formatLocation(property?.location),
+    },
+    {
+      label: "Type",
+      getValue: (property) =>
+        property?.propertyType
+          ? property.propertyType.replace(/^\w/, (c) => c.toUpperCase())
+          : "N/A",
+    },
+    {
+      label: "Size",
+      getValue: (property) =>
+        property?.size ? `${property.size} sq ft` : property?.area || "N/A",
+    },
+    {
+      label: "Bedrooms",
+      getValue: (property) => property?.bedrooms ?? "N/A",
+    },
+    {
+      label: "Bathrooms",
+      getValue: (property) => property?.bathrooms ?? "N/A",
+    },
+    {
+      label: "Year Built",
+      getValue: (property) => property?.yearBuild || property?.yearBuilt || "N/A",
+    },
+    {
+      label: "Status",
+      getValue: (property) =>
+        property?.status
+          ? property.status.replace(/-/g, " ").replace(/^\w/, (c) => c.toUpperCase())
+          : "N/A",
+    },
+    {
+      label: "Key Amenities",
+      getValue: (property) => {
+        if (!property?.amenities || typeof property.amenities !== "object") {
+          return "—";
+        }
+        const enabled = Object.entries(property.amenities)
+          .filter(([, enabled]) => enabled)
+          .map(([name]) =>
+            name
+              .replace(/([A-Z])/g, " $1")
+              .replace(/^\w/, (c) => c.toUpperCase())
+          );
+        return enabled.length > 0 ? enabled.join(", ") : "—";
+      },
+    },
+  ];
 
   useEffect(() => {
     if (!currentUser) {
@@ -179,39 +262,39 @@ const UserDashboard = () => {
       }
 
       try {
-  const savedResponse = await getSavedListings();
-  const savedArray = savedResponse?.data;
+        const savedResponse = await getSavedListings();
+        const savedArray = savedResponse?.data;
 
-  if (Array.isArray(savedArray)) {
-    const transformedSaved = savedArray.map((item) => {
-      const listing = item.listingId || item.listing;
-      const property = listing; 
+        if (Array.isArray(savedArray)) {
+          const transformedSaved = savedArray.map((item) => {
+            const listing = item.listingId || item.listing;
+            const property = listing;
 
-      return {
-        id: item._id,               
-        listingId: listing._id,      
-        property,                    
+            return {
+              id: item._id,
+              listingId: listing._id,
+              property,
 
-        
-        title: property.title,
-        price: property.price,
-        location: property.location?.city
-          ? `${property.location.city}, ${property.location.state || ''}`
-          : "Location N/A",
-        image: property.images?.[0] || "https://via.placeholder.com/400",
-        bedrooms: property.bedrooms,
-        bathrooms: property.bathrooms,
-        area: property.size ? `${property.size} sq ft` : "0 sq ft",
-        savedDate: item.createdAt,
-      };
-    });
 
-    setSavedProperties(transformedSaved);
-  }
-} catch (savedError) {
-  console.error("Error fetching saved listings:", savedError);
-  setSavedProperties([]);
-}
+              title: property.title,
+              price: property.price,
+              location: property.location?.city
+                ? `${property.location.city}, ${property.location.state || ''}`
+                : "Location N/A",
+              image: property.images?.[0] || "https://via.placeholder.com/400",
+              bedrooms: property.bedrooms,
+              bathrooms: property.bathrooms,
+              area: property.size ? `${property.size} sq ft` : "0 sq ft",
+              savedDate: item.createdAt,
+            };
+          });
+
+          setSavedProperties(transformedSaved);
+        }
+      } catch (savedError) {
+        console.error("Error fetching saved listings:", savedError);
+        setSavedProperties([]);
+      }
 
 
 
@@ -222,16 +305,10 @@ const UserDashboard = () => {
         // Backend returns an array of property objects directly (from comparison.propertyIds populated)
         if (comparedResponse?.data && Array.isArray(comparedResponse.data)) {
           // Transform compared properties data
-          const transformedCompared = comparedResponse.data.map((property) => ({
-            id: property._id || property.id,
-            title: property.title || 'Property',
-            price: property.price || 'N/A',
-            location: property.location?.city
-              ? `${property.location.city}, ${property.location.state || ''}`
-              : 'Location N/A',
-            image: property.images?.[0] || 'https://via.placeholder.com/400'
-          }));
-          setComparedProperties(transformedCompared);
+          // Transform compared properties data
+          // For the table view, we need the full property objects, not just the simplified version
+          // So we just set the data directly, similar to how PropertyComparisonPage does it
+          setComparedProperties(comparedResponse.data);
         }
       } catch (comparedError) {
         // If no comparison found (404), it's okay - user just hasn't added any yet
@@ -242,7 +319,7 @@ const UserDashboard = () => {
       }
 
       // Fetch user's listed properties 
-      
+
       try {
         const token = await currentUser.getIdToken();
         const response = await axios.get('/api/properties/my-listings', {
@@ -282,27 +359,27 @@ const UserDashboard = () => {
   };
 
   const handleUnsave = async (savedItemId) => {
-  try {
-    await removeSavedListing(savedItemId);
+    try {
+      await removeSavedListing(savedItemId);
 
-    // forcing hard reload as not using context right now
-    window.location.reload();
+      // forcing hard reload as not using context right now
+      window.location.reload();
 
-  } catch (err) {
-    console.error("Error unsaving property:", err);
-  }
-};
+    } catch (err) {
+      console.error("Error unsaving property:", err);
+    }
+  };
 
 
 
-const handleViewDetails = (propertyId) => {
-  const saved = savedProperties.find((p) => p.listingId === propertyId);
+  const handleViewDetails = (propertyId) => {
+    const saved = savedProperties.find((p) => p.listingId === propertyId);
 
-  if (!saved) return;
+    if (!saved) return;
 
-  setSelectedProperty(saved.property); // full property object
-  setIsDetailsOpen(true);
-};
+    setSelectedProperty(saved.property); // full property object
+    setIsDetailsOpen(true);
+  };
 
 
 
@@ -315,9 +392,9 @@ const handleViewDetails = (propertyId) => {
     }
   };
 
-  
 
-  
+
+
 
   const handleRemoveComparison = async (propertyId) => {
     try {
@@ -327,16 +404,10 @@ const handleViewDetails = (propertyId) => {
       const comparedResponse = await getComparedProperties();
       if (comparedResponse?.data && Array.isArray(comparedResponse.data)) {
         // Transform compared properties data - backend returns array of property objects
-        const transformedCompared = comparedResponse.data.map((property) => ({
-          id: property._id || property.id,
-          title: property.title || 'Property',
-          price: property.price || 'N/A',
-          location: property.location?.city
-            ? `${property.location.city}, ${property.location.state || ''}`
-            : 'Location N/A',
-          image: property.images?.[0] || 'https://via.placeholder.com/400'
-        }));
-        setComparedProperties(transformedCompared);
+        // Transform compared properties data - backend returns array of property objects
+        // We need to keep the full property object for the table view to work correctly with attributeRows
+        // The previous transformation was too aggressive and lost data needed for the table
+        setComparedProperties(comparedResponse.data);
       } else {
         setComparedProperties([]);
       }
@@ -376,53 +447,53 @@ const handleViewDetails = (propertyId) => {
   };
 
   const handleAddNewListing = () => {
-  setIsAddListingOpen(true);
-};
+    setIsAddListingOpen(true);
+  };
 
-const handleSubmitListing = async () => {
-const auth = getAuth();
-const token = await auth.currentUser.getIdToken();
-  try {
-    const formData = new FormData();
+  const handleSubmitListing = async () => {
+    const auth = getAuth();
+    const token = await auth.currentUser.getIdToken();
+    try {
+      const formData = new FormData();
 
-    // Append text fields
-    Object.keys(newListing).forEach((key) => {
-      if (key === "amenities" || key === "location") {
-        formData.append(key, JSON.stringify(newListing[key]));
-      } else {
-        formData.append(key, newListing[key]);
+      // Append text fields
+      Object.keys(newListing).forEach((key) => {
+        if (key === "amenities" || key === "location") {
+          formData.append(key, JSON.stringify(newListing[key]));
+        } else {
+          formData.append(key, newListing[key]);
+        }
+      });
+
+      // Append images
+      for (let i = 0; i < images.length; i++) {
+        formData.append("images", images[i]); // <-- must match multer
       }
-    });
+      for (let pair of formData.entries()) {
+        console.log(pair[0] + ": " + pair[1]);
+      }
 
-    // Append images
-    for (let i = 0; i < images.length; i++) {
-  formData.append("images", images[i]); // <-- must match multer
-}
-for (let pair of formData.entries()) {
-  console.log(pair[0] + ": " + pair[1]);
-}
+      const response = await axios.post(
+        "http://localhost:8000/api/properties/create",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`,  // <-- REQUIRED
+          },
+        }
 
-    const response = await axios.post(
-  "http://localhost:8000/api/properties/create",
-  formData,
-  {
-    headers: {
-      "Content-Type": "multipart/form-data",
-      Authorization: `Bearer ${token}`,  // <-- REQUIRED
-    },
-  }
-  
-);
+      );
 
-    alert("Listing created successfully!");
+      alert("Listing created successfully!");
 
-    setIsAddListingOpen(false);
-    window.location.reload();
+      setIsAddListingOpen(false);
+      window.location.reload();
 
-  } catch (err) {
-    console.error(err);
-    alert("Error creating listing");
-  }
+    } catch (err) {
+      console.error(err);
+      alert("Error creating listing");
+    }
   };
 
   const handlePhotoChange = (e) => {
@@ -560,7 +631,7 @@ for (let pair of formData.entries()) {
     <>
       <div className="flex min-h-screen bg-gray-50">
         {/* Sidebar */}
-        <aside className={`w-72 bg-gradient-to-b from-blue-600 to-blue-800 text-white flex-col fixed h-full left-0 overflow-y-auto shadow-lg rounded-r-2xl z-20 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out flex`}>
+        <aside className={`w-72 bg-gradient-to-b from-blue-600 to-blue-800 text-white flex-col fixed h-[calc(100vh-4rem)] top-16 left-0 overflow-y-auto shadow-lg rounded-r-2xl z-40 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out flex`}>
           <div className="p-8 text-center border-b border-white/10">
             <div className="w-20 h-20 rounded-full mx-auto mb-4 bg-white/20 flex items-center justify-center overflow-hidden border-3 border-white">
               {(userData?.photoURL || photoPreview) ? (
@@ -613,9 +684,9 @@ for (let pair of formData.entries()) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:pl-72 p-4 sm:p-8 pt-16 sm:pt-20 min-h-screen">
+        <main className="flex-1 lg:pl-72 p-4 sm:p-8 pt-16 sm:pt-20 min-h-screen min-w-0">
           <button
-            className="lg:hidden fixed top-5 left-5 z-30 p-2 bg-white rounded-full shadow-md text-gray-800"
+            className="lg:hidden fixed top-20 left-5 z-30 p-2 bg-white rounded-full shadow-md text-gray-800"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           >
             {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -623,7 +694,7 @@ for (let pair of formData.entries()) {
 
           {isSidebarOpen && (
             <div
-              className="lg:hidden fixed inset-0 bg-black/40 z-10"
+              className="lg:hidden fixed left-0 right-0 bottom-0 top-16 bg-black/40 z-30"
               onClick={() => setIsSidebarOpen(false)}
             ></div>
           )}
@@ -638,7 +709,7 @@ for (let pair of formData.entries()) {
             </h1>
           </div>
 
-          <div className="bg-white rounded-xl p-4 sm:p-8 shadow-sm">
+          <div className="bg-white rounded-xl p-4 sm:p-8 shadow-sm max-w-full">
 
 
 
@@ -706,51 +777,97 @@ for (let pair of formData.entries()) {
             {
               activeTab === 'comparisons' && (
                 <div>
+
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">Comparing {comparedProperties.length} Properties</h2>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { getComparedProperties } = await import('../../services/comparisonApi');
+                            const response = await getComparedProperties();
+                            if (response?.data) setComparedProperties(response.data);
+                          } catch (error) {
+                            console.error('Error refreshing comparison:', error);
+                          }
+                        }}
+                        className="flex items-center gap-2 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <RefreshCcw className="h-4 w-4" />
+                        <span className="hidden sm:inline">Refresh</span>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { clearComparison } = await import('../../services/comparisonApi');
+                            await clearComparison();
+                            setComparedProperties([]);
+                          } catch (error) {
+                            console.error('Error clearing comparison:', error);
+                          }
+                        }}
+                        className="flex items-center gap-2 border border-red-200 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="hidden sm:inline">Clear All</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {comparedProperties.length > 0 ? (
-                    <>
-                      <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">Comparing {comparedProperties.length} Properties</h2>
-                        <button
-                          onClick={async () => {
-                            try {
-                              const { clearComparison } = await import('../../services/comparisonApi');
-                              await clearComparison();
-                              setComparedProperties([]);
-                            } catch (error) {
-                              console.error('Error clearing comparison:', error);
-                            }
-                          }}
-                          className="px-4 py-2 bg-red-500 text-white rounded-lg transition-all duration-300 hover:bg-red-600"
-                        >
-                          Clear All
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {comparedProperties.map(property => (
-                          <div key={property.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group">
-                            <div className="relative w-full h-48 overflow-hidden">
-                              <img src={property.image} alt={property.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                              <button
-                                onClick={() => handleRemoveComparison(property.id)}
-                                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/90 text-red-500 flex items-center justify-center z-10 transition-all duration-300 hover:bg-red-500 hover:text-white shadow-sm"
-                              >
-                                <X size={16} />
-                              </button>
+                    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+                      <div
+                        className="grid gap-4 border-b px-6 py-6"
+                        style={{ gridTemplateColumns: `200px repeat(${comparedProperties.length}, minmax(200px, 1fr))` }}
+                      >
+                        <div className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                          Overview
+                        </div>
+                        {comparedProperties.map((property) => (
+                          <div
+                            key={property._id || property.id}
+                            className="rounded-xl border border-gray-100 p-4 shadow-sm"
+                          >
+                            <div className="aspect-video rounded-lg overflow-hidden mb-3">
+                              <img
+                                src={property?.images?.[0] || "/placeholder.jpg"}
+                                alt={property?.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.src = "/placeholder.jpg";
+                                }}
+                              />
                             </div>
-                            <div className="p-5">
-                              <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-1">{property.title}</h3>
-                              <p className="text-xl font-bold text-blue-600 mb-2">{property.price}</p>
-                              <div className="flex items-center gap-2 text-gray-500 text-sm">
-                                <MapPin size={14} />
-                                <span className="line-clamp-1">{formatLocation(property.location)}</span>
-                              </div>
-                            </div>
+                            <p className="font-semibold text-gray-900 mb-1">
+                              {property?.title}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {formatLocation(property?.location)}
+                            </p>
+                            <button
+                              className="mt-4 text-sm text-red-600 hover:text-red-700 flex items-center gap-1"
+                              onClick={() => handleRemoveComparison(property._id || property.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Remove
+                            </button>
                           </div>
                         ))}
                       </div>
-                    </>
+
+                      <div className="px-6">
+                        {attributeRows.map((row) => (
+                          <ComparisonTableRow
+                            key={row.label}
+                            label={row.label}
+                            values={comparedProperties.map((property) => row.getValue(property))}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="flex flex-col items-center justify-center py-20 text-center border rounded-xl bg-gray-50">
                       <GitCompare size={64} className="text-gray-300 mb-4" />
                       <h2 className="text-2xl font-semibold text-gray-800 mb-2">No Comparisons</h2>
                       <p className="text-gray-600 mb-6">Add properties to compare them side by side</p>
@@ -763,6 +880,7 @@ for (let pair of formData.entries()) {
                       </button>
                     </div>
                   )}
+
                 </div>
               )
             }
@@ -1015,205 +1133,207 @@ for (let pair of formData.entries()) {
         </main >
       </div >
       {isDetailsOpen && selectedProperty && (
-  <PropertyDetails
-    property={selectedProperty}
-    isOpen={isDetailsOpen}
-    onClose={() => {
-      setIsDetailsOpen(false);
-      setSelectedProperty(null);
-    }}
-  />
-)}
+        <PropertyDetails
+          property={selectedProperty}
+          isOpen={isDetailsOpen}
+          onClose={() => {
+            setIsDetailsOpen(false);
+            setSelectedProperty(null);
+          }}
+        />
+      )}
 
-{isAddListingOpen && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-    <div className="bg-white p-8 rounded-xl w-[700px] max-h-[90vh] overflow-y-auto">
+      {
+        isAddListingOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-white p-8 rounded-xl w-[700px] max-h-[90vh] overflow-y-auto">
 
-      <h2 className="text-2xl font-bold mb-4">Create New Listing</h2>
+              <h2 className="text-2xl font-bold mb-4">Create New Listing</h2>
 
-      {/* TITLE */}
-      <input
-        className="w-full p-2 border rounded mb-3"
-        placeholder="Title"
-        value={newListing.title}
-        onChange={(e) => setNewListing({ ...newListing, title: e.target.value })}
-      />
+              {/* TITLE */}
+              <input
+                className="w-full p-2 border rounded mb-3"
+                placeholder="Title"
+                value={newListing.title}
+                onChange={(e) => setNewListing({ ...newListing, title: e.target.value })}
+              />
 
-      {/* DESCRIPTION */}
-      <textarea
-        className="w-full p-2 border rounded mb-3"
-        placeholder="Description"
-        value={newListing.description}
-        onChange={(e) => setNewListing({ ...newListing, description: e.target.value })}
-      />
+              {/* DESCRIPTION */}
+              <textarea
+                className="w-full p-2 border rounded mb-3"
+                placeholder="Description"
+                value={newListing.description}
+                onChange={(e) => setNewListing({ ...newListing, description: e.target.value })}
+              />
 
-      {/* PRICE */}
-      <input
-        className="w-full p-2 border rounded mb-3"
-        placeholder="Price"
-        type="number"
-        value={newListing.price}
-        onChange={(e) => setNewListing({ ...newListing, price: e.target.value })}
-      />
+              {/* PRICE */}
+              <input
+                className="w-full p-2 border rounded mb-3"
+                placeholder="Price"
+                type="number"
+                value={newListing.price}
+                onChange={(e) => setNewListing({ ...newListing, price: e.target.value })}
+              />
 
-      {/* YEAR */}
-      <input
-        className="w-full p-2 border rounded mb-3"
-        placeholder="Year Built"
-        type="number"
-        value={newListing.yearBuild}
-        onChange={(e) =>
-          setNewListing({ ...newListing, yearBuild: e.target.value })
-        }
-      />
+              {/* YEAR */}
+              <input
+                className="w-full p-2 border rounded mb-3"
+                placeholder="Year Built"
+                type="number"
+                value={newListing.yearBuild}
+                onChange={(e) =>
+                  setNewListing({ ...newListing, yearBuild: e.target.value })
+                }
+              />
 
-      {/* LOCATION */}
-      <h3 className="font-semibold mt-4">Location</h3>
-      <input className="w-full p-2 border rounded mb-3" placeholder="Street"
-        onChange={(e) => setNewListing({
-          ...newListing,
-          location: { ...newListing.location, street: e.target.value }
-        })}
-      />
+              {/* LOCATION */}
+              <h3 className="font-semibold mt-4">Location</h3>
+              <input className="w-full p-2 border rounded mb-3" placeholder="Street"
+                onChange={(e) => setNewListing({
+                  ...newListing,
+                  location: { ...newListing.location, street: e.target.value }
+                })}
+              />
 
-      <input className="w-full p-2 border rounded mb-3" placeholder="City"
-        onChange={(e) => setNewListing({
-          ...newListing,
-          location: { ...newListing.location, city: e.target.value }
-        })}
-      />
+              <input className="w-full p-2 border rounded mb-3" placeholder="City"
+                onChange={(e) => setNewListing({
+                  ...newListing,
+                  location: { ...newListing.location, city: e.target.value }
+                })}
+              />
 
-      <input
-  className="border p-2 rounded w-full"
-  placeholder="Locality"
-  required
-  value={newListing.location.locality}
-  onChange={(e) =>
-    setNewListing({
-      ...newListing,
-      location: { ...newListing.location, locality: e.target.value }
-    })
-  }
-/>
+              <input
+                className="border p-2 rounded w-full"
+                placeholder="Locality"
+                required
+                value={newListing.location.locality}
+                onChange={(e) =>
+                  setNewListing({
+                    ...newListing,
+                    location: { ...newListing.location, locality: e.target.value }
+                  })
+                }
+              />
 
- <select
-  required
-  className="border p-2 rounded w-full"
-  value={newListing.propertyType}
-  onChange={(e) =>
-    setNewListing({ ...newListing, propertyType: e.target.value })
-  }
->
-  <option value="">Select Property Type</option>
-  <option value="residential">Residential</option>
-  <option value="commercial">Commercial</option>
-  <option value="land">Land</option>
-  <option value="rental">Rental</option>
-</select>
+              <select
+                required
+                className="border p-2 rounded w-full"
+                value={newListing.propertyType}
+                onChange={(e) =>
+                  setNewListing({ ...newListing, propertyType: e.target.value })
+                }
+              >
+                <option value="">Select Property Type</option>
+                <option value="residential">Residential</option>
+                <option value="commercial">Commercial</option>
+                <option value="land">Land</option>
+                <option value="rental">Rental</option>
+              </select>
 
-<input className="border p-2 rounded w-full" placeholder="Number of balconies"
-  type="number"
-  required
-  min="0"
-  value={newListing.balconies}
-  onChange={(e) =>
-    setNewListing({ ...newListing, balconies: Number(e.target.value) })
-  }
-  
-/>
-<input className="w-full p-2 border rounded mb-3" placeholder="State"
-  onChange={(e) => setNewListing({
-    ...newListing,
-    location: { ...newListing.location, state: e.target.value }
-  })}
-/>
+              <input className="border p-2 rounded w-full" placeholder="Number of balconies"
+                type="number"
+                required
+                min="0"
+                value={newListing.balconies}
+                onChange={(e) =>
+                  setNewListing({ ...newListing, balconies: Number(e.target.value) })
+                }
 
-<input className="w-full p-2 border rounded mb-3" placeholder="Country"
-  onChange={(e) => setNewListing({
-    ...newListing,
-    location: { ...newListing.location, country: e.target.value }
-  })}
-/>
+              />
+              <input className="w-full p-2 border rounded mb-3" placeholder="State"
+                onChange={(e) => setNewListing({
+                  ...newListing,
+                  location: { ...newListing.location, state: e.target.value }
+                })}
+              />
 
-<input className="w-full p-2 border rounded mb-3" placeholder="Zip Code"
-  onChange={(e) => setNewListing({
-    ...newListing,
-    location: { ...newListing.location, zipCode: e.target.value }
-  })}
-/>
+              <input className="w-full p-2 border rounded mb-3" placeholder="Country"
+                onChange={(e) => setNewListing({
+                  ...newListing,
+                  location: { ...newListing.location, country: e.target.value }
+                })}
+              />
 
-<input className="w-full p-2 border rounded mb-3" placeholder="Latitude"
-  onChange={(e) => setNewListing({
-    ...newListing,
-    location: { ...newListing.location, latitude: e.target.value }
-  })}
-/>
+              <input className="w-full p-2 border rounded mb-3" placeholder="Zip Code"
+                onChange={(e) => setNewListing({
+                  ...newListing,
+                  location: { ...newListing.location, zipCode: e.target.value }
+                })}
+              />
 
-<input className="w-full p-2 border rounded mb-3" placeholder="Longitude"
-  onChange={(e) => setNewListing({
-    ...newListing,
-    location: { ...newListing.location, longitude: e.target.value }
-  })}
-/>
-<input
-  type="number"
-  required
-  min="1"
-  value={newListing.size}
-  onChange={(e) =>
-    setNewListing({ ...newListing, size: Number(e.target.value) })
-  }
-  className="border p-2 rounded w-full"
-  placeholder="Enter property size (sq ft)"
-/>
-<input
-  type="number"
-  required
-  min="0"
-  value={newListing.bedrooms}
-  onChange={(e) =>
-    setNewListing({ ...newListing, bedrooms: Number(e.target.value) })
-  }
-  className="border p-2 rounded w-full"
-  placeholder="Number of bedrooms"
-/>
-<input
-  type="number"
-  required
-  min="0"
-  value={newListing.bathrooms}
-  onChange={(e) =>
-    setNewListing({ ...newListing, bathrooms: Number(e.target.value) })
-  }
-  className="border p-2 rounded w-full"
-  placeholder="Number of bathrooms"
-/>
+              <input className="w-full p-2 border rounded mb-3" placeholder="Latitude"
+                onChange={(e) => setNewListing({
+                  ...newListing,
+                  location: { ...newListing.location, latitude: e.target.value }
+                })}
+              />
 
-      {/* IMAGES */}
-      <h3 className="font-semibold mt-4">Images</h3>
-      <input
-        type="file"
-        multiple
-        onChange={(e) => setImages([...e.target.files])}
-      />
+              <input className="w-full p-2 border rounded mb-3" placeholder="Longitude"
+                onChange={(e) => setNewListing({
+                  ...newListing,
+                  location: { ...newListing.location, longitude: e.target.value }
+                })}
+              />
+              <input
+                type="number"
+                required
+                min="1"
+                value={newListing.size}
+                onChange={(e) =>
+                  setNewListing({ ...newListing, size: Number(e.target.value) })
+                }
+                className="border p-2 rounded w-full"
+                placeholder="Enter property size (sq ft)"
+              />
+              <input
+                type="number"
+                required
+                min="0"
+                value={newListing.bedrooms}
+                onChange={(e) =>
+                  setNewListing({ ...newListing, bedrooms: Number(e.target.value) })
+                }
+                className="border p-2 rounded w-full"
+                placeholder="Number of bedrooms"
+              />
+              <input
+                type="number"
+                required
+                min="0"
+                value={newListing.bathrooms}
+                onChange={(e) =>
+                  setNewListing({ ...newListing, bathrooms: Number(e.target.value) })
+                }
+                className="border p-2 rounded w-full"
+                placeholder="Number of bathrooms"
+              />
 
-      {/* SUBMIT BUTTON */}
-      <button
-        onClick={handleSubmitListing}
-        className="w-full py-3 bg-blue-600 text-white rounded-lg mt-4"
-      >
-        Submit Listing
-      </button>
+              {/* IMAGES */}
+              <h3 className="font-semibold mt-4">Images</h3>
+              <input
+                type="file"
+                multiple
+                onChange={(e) => setImages([...e.target.files])}
+              />
 
-      <button
-        onClick={() => setIsAddListingOpen(false)}
-        className="w-full py-3 bg-gray-300 text-black rounded-lg mt-2"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-)}
+              {/* SUBMIT BUTTON */}
+              <button
+                onClick={handleSubmitListing}
+                className="w-full py-3 bg-blue-600 text-white rounded-lg mt-4"
+              >
+                Submit Listing
+              </button>
+
+              <button
+                onClick={() => setIsAddListingOpen(false)}
+                className="w-full py-3 bg-gray-300 text-black rounded-lg mt-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )
+      }
 
     </>
   );

@@ -153,8 +153,8 @@ export function PropertyDetails({ property, isOpen, onClose }) {
           >
             <Star
               className={`h-5 w-5 ${star <= rating
-                  ? "fill-yellow-400 text-yellow-400"
-                  : "text-gray-300"
+                ? "fill-yellow-400 text-yellow-400"
+                : "text-gray-300"
                 }`}
             />
           </button>
@@ -219,8 +219,8 @@ export function PropertyDetails({ property, isOpen, onClose }) {
               onClick={handleComparisonToggle}
               disabled={isUpdating}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isCompared
-                  ? "bg-green-600 text-white hover:bg-green-700"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
             >
               <GitCompare className="h-4 w-4" />
@@ -239,9 +239,7 @@ export function PropertyDetails({ property, isOpen, onClose }) {
             >
               <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
             </button>
-            <button className="p-2 rounded-full border border-gray-300 text-gray-500">
-              <Share className="h-4 w-4" />
-            </button>
+
           </div>
         </div>
 
