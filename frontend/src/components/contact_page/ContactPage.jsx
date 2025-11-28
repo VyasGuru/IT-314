@@ -24,6 +24,10 @@ export default function ContactPage() {
     setMessages((prev) => [...prev, entry]);
   }, []);
 
+  const handleClear = useCallback(() => {
+    setMessages([]);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#f6f9ff] py-12">
       <div className="max-w-6xl mx-auto px-4 space-y-10">
@@ -86,7 +90,12 @@ export default function ContactPage() {
               </span>
             </div>
             <div className="p-6">
-              <LegacyChat messages={messages} onUserMessage={handleUserMessage} onBotMessage={handleBotMessage} />
+              <LegacyChat
+                messages={messages}
+                onUserMessage={handleUserMessage}
+                onBotMessage={handleBotMessage}
+                onClear={handleClear}
+              />
             </div>
           </section>
         </div>

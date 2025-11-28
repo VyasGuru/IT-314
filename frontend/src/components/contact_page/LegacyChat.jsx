@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { initLegacyChat } from "./legacyChatLogic";
 import "./legacyChat.css";
 
-export default function LegacyChat({ messages = [], onUserMessage, onBotMessage }) {
+export default function LegacyChat({ messages = [], onUserMessage, onBotMessage, onClear }) {
   const widgetRef = useRef(null);
   const apiRef = useRef(null);
 
@@ -13,10 +13,11 @@ export default function LegacyChat({ messages = [], onUserMessage, onBotMessage 
       onUserMessage,
       onBotMessage,
       persistHistory: true,
+      onClear,
     });
     apiRef.current = api;
     return () => api.destroy();
-  }, [onUserMessage, onBotMessage]);
+  }, [onUserMessage, onBotMessage, onClear]);
 
   useEffect(() => {
     apiRef.current?.setMessages(messages);
@@ -38,6 +39,9 @@ export default function LegacyChat({ messages = [], onUserMessage, onBotMessage 
             <div className="chat-header-actions">
               <button className="chat-clear" type="button" id="chatClear">
                 Clear
+              </button>
+              <button className="chat-admin" type="button" id="chatAdmin">
+                Send to Admin
               </button>
               <button className="chat-close" type="button" id="chatClose">
                 ×

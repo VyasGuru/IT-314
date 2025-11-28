@@ -74,6 +74,28 @@ const verifyFirebaseToken = asyncHandler(async (req, _, next) => {
   }
 });
 
+const attachFirebaseUser = asyncHandler(async (req, _, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next();
+  }
+
+  try {
+    const token = authHeader.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(token);
+    const user = await User.findOne({ firebaseUid: decoded.uid });
+
+    if (user) {
+      req.user = user;
+    }
+  } catch (err) {
+    console.warn("Optional token verification failed:", err.message);
+  }
+
+  return next();
+});
+
 // In authMiddleware.js
 const verifyLister = asyncHandler(async (req, res, next) => {
     try {
@@ -181,8 +203,9 @@ const isVerifiedLister = asyncHandler(async (req, res, next) => {
 
 export { 
     checkAdmin, 
-    verifyFirebaseToken, 
+  verifyFirebaseToken, 
     verifyLister,
     verifyAdmin,
-    isVerifiedLister
+    isVerifiedLister,
+    attachFirebaseUser
 };

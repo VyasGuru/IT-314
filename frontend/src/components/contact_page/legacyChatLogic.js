@@ -1,5 +1,6 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { auth } from "../../firebase";
 
 const STORAGE_KEY = "popup_chat_history_v1";
 const SESSION_ID_KEY = "popup_chat_session_id_v1";
@@ -21,6 +22,20 @@ const resolveBackendUrl = () => {
 };
 
 const API_BASE_URL = resolveBackendUrl();
+
+const buildAuthorizedHeaders = async () => {
+  const headers = { "Content-Type": "application/json" };
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (error) {
+    console.warn("Could not attach auth token", error);
+  }
+  return headers;
+};
 
 const generateSessionId = () => {
   const cryptoObj = typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
@@ -164,6 +179,7 @@ const defaultOptions = {
   onBotMessage: undefined,
   persistHistory: true,
   welcomeMessage: "Hello! What can I do for you today?",
+  onClear: undefined,
 };
 
 export function initLegacyChat(root, options = {}) {
@@ -195,13 +211,133 @@ export function initLegacyChat(root, options = {}) {
   }
 
   let destroyed = false;
-  const sessionId = getSessionId();
+  let sessionId = getSessionId();
   persistSessionId(sessionId);
   widget.dataset.sessionId = sessionId;
 
   const scrollToBottom = () => {
     body.scrollTop = body.scrollHeight;
   };
+
+  // Admin-mode UI: create and manage admin query panel
+  const chatAdminBtn = widget.querySelector("#chatAdmin");
+  let adminPanelEl = null;
+
+  const exitAdminMode = () => {
+    if (!adminPanelEl) return;
+    adminPanelEl.remove();
+    adminPanelEl = null;
+    messagesContainer.style.display = "";
+    form.style.display = "flex";
+    input.focus();
+  };
+
+  const getCurrentUserProfile = () => {
+    const user = auth.currentUser;
+    if (!user) return null;
+    return {
+      name: user.displayName || user.email || "",
+      email: user.email || "",
+    };
+  };
+
+  const enterAdminMode = () => {
+    if (adminPanelEl) return;
+    messagesContainer.style.display = "none";
+    form.style.display = "none";
+
+    adminPanelEl = document.createElement("div");
+    adminPanelEl.className = "chat-admin-panel";
+    const userProfile = getCurrentUserProfile();
+    const emailField = userProfile?.email
+      ? `<input id="adminEmail" class="admin-title" type="email" value="${userProfile.email}" readonly />`
+      : `<input id="adminEmail" class="admin-title" type="email" placeholder="Enter your email" />`;
+    const nameField = userProfile?.name
+      ? `<input id="adminName" class="admin-title" type="text" value="${userProfile.name}" />`
+      : `<input id="adminName" class="admin-title" type="text" placeholder="Your name" />`;
+
+    adminPanelEl.innerHTML = `
+      <div class="admin-panel-inner">
+        <label class="admin-label">Your Email</label>
+        ${emailField}
+        <label class="admin-label">Your Name</label>
+        ${nameField}
+        <label class="admin-label">Subject</label>
+        <input id="adminTitle" class="admin-title" type="text" placeholder="Short subject" />
+        <label class="admin-label">Message</label>
+        <textarea id="adminMessage" class="admin-message" rows="6" placeholder="Write your message to admin..."></textarea>
+        <div class="admin-actions">
+          <button id="adminSend" class="admin-send">Send to Admin</button>
+          <button id="adminCancel" class="admin-cancel">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    body.appendChild(adminPanelEl);
+
+    const sendBtn = adminPanelEl.querySelector("#adminSend");
+    const cancelBtn = adminPanelEl.querySelector("#adminCancel");
+
+    cancelBtn?.addEventListener("click", (e) => {
+      e.preventDefault();
+      exitAdminMode();
+    });
+
+    sendBtn?.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const titleEl = adminPanelEl.querySelector("#adminTitle");
+      const emailEl = adminPanelEl.querySelector("#adminEmail");
+      const nameEl = adminPanelEl.querySelector("#adminName");
+      const messageEl = adminPanelEl.querySelector("#adminMessage");
+      const title = (titleEl.value || "User query").toString().trim();
+      const message = (messageEl.value || "").toString().trim();
+      const contactEmail = (emailEl.value || "").toString().trim();
+      const contactName = (nameEl.value || "").toString().trim();
+      if (!message) {
+        alert("Please enter a message for admin.");
+        return;
+      }
+      if (!contactEmail) {
+        alert("Please provide your email so the admin can reach you.");
+        return;
+      }
+
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Sending...";
+
+      try {
+        const headers = await buildAuthorizedHeaders();
+        const response = await fetch(`${API_BASE_URL}/api/notifications/to-admin`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ title, message, contactEmail, contactName }),
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          const errMessage =
+            payload?.message || payload?.error || `Server returned ${response.status}`;
+          throw new Error(errMessage);
+        }
+
+        appendSystem("Your message was sent to admin");
+      } catch (err) {
+        console.error("Failed to send to admin", err);
+        appendSystem(err.message || "Could not send message to admin. Please try again later.");
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send to Admin";
+        exitAdminMode();
+      }
+    });
+  };
+
+  const handleAdminButton = (e) => {
+    e.preventDefault();
+    enterAdminMode();
+  };
+
+  chatAdminBtn?.addEventListener("click", handleAdminButton);
 
   const appendMessageNode = (text, who, { skipSave = false } = {}) => {
     const el = document.createElement("div");
@@ -307,6 +443,7 @@ export function initLegacyChat(root, options = {}) {
   };
 
   const handleClear = async () => {
+    exitAdminMode();
     messagesContainer.innerHTML = "";
     if (settings.persistHistory) {
       try {
@@ -315,8 +452,12 @@ export function initLegacyChat(root, options = {}) {
         console.warn("Could not clear chat history", error);
       }
     }
-    await clearChatHistoryRemote(sessionId);
-    appendSystem("Chat cleared");
+    const previousSessionId = sessionId;
+    await clearChatHistoryRemote(previousSessionId);
+    sessionId = generateSessionId();
+    persistSessionId(sessionId);
+    widget.dataset.sessionId = sessionId;
+    settings.onClear?.();
     input.focus();
     ensureWelcomeMessage({ skipSave: true });
   };
@@ -364,7 +505,11 @@ export function initLegacyChat(root, options = {}) {
   form.addEventListener("submit", handleSubmit);
 
   const hydrateFromServer = async () => {
-    const records = await fetchChatHistory(sessionId);
+    const targetSessionId = sessionId;
+    const records = await fetchChatHistory(targetSessionId);
+    if (sessionId !== targetSessionId) {
+      return;
+    }
     if (!records.length) {
       ensureWelcomeMessage({ skipSave: true });
       return;
@@ -397,7 +542,11 @@ export function initLegacyChat(root, options = {}) {
 
   const api = {
     setMessages(newMessages) {
-      renderMessages(newMessages ?? [], { skipSave: !settings.persistHistory });
+      const items = Array.isArray(newMessages) ? newMessages : [];
+      renderMessages(items, { skipSave: !settings.persistHistory });
+      if (items.length === 0) {
+        ensureWelcomeMessage({ skipSave: true });
+      }
     },
     destroy() {
       if (destroyed) return;
@@ -405,7 +554,9 @@ export function initLegacyChat(root, options = {}) {
       if (!settings.alwaysOpen && toggle) toggle.removeEventListener("click", handleToggle);
       closeBtn?.removeEventListener("click", handleClose);
       clearBtn?.removeEventListener("click", handleClear);
+      chatAdminBtn?.removeEventListener("click", handleAdminButton);
       form.removeEventListener("submit", handleSubmit);
+      exitAdminMode();
     },
   };
 

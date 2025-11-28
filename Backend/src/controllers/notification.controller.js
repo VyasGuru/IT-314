@@ -1,5 +1,6 @@
 import {
     createListerNotification,
+    createAdminNotification,
     listUserNotifications,
     listAdminNotifications,
     markNotificationAsRead,
@@ -92,15 +93,96 @@ const getAdminNotifications = asyncHandler(async (req, res) => {
         );
 });
 
+const normalizeResolutionMessages = (messages) => {
+    if (!Array.isArray(messages)) {
+        return [];
+    }
+
+    return messages
+        .filter((message) => typeof message === "string")
+        .map((message) => message.trim())
+        .filter((message) => message.length > 0)
+        .slice(0, 10); // prevent accidental spam
+};
+
 const markAsRead = asyncHandler(async (req, res) => {
     const notification = await markNotificationAsRead(req.params.id, {
         isAdmin: req.user?.role === "admin",
         userId: req.user?._id,
     });
 
+    if (
+        req.user?.role === "admin" &&
+        !notification?.userFirebaseUid &&
+        notification?.metadata?.sentBy
+    ) {
+        try {
+            const title = notification.title || "Your query was updated";
+            const resolutionMessages = normalizeResolutionMessages(req.body?.resolutionMessages);
+            const fallbackMessage = `Your query "${title}" has been marked as resolved by the admin team.`;
+            const message = resolutionMessages.length > 0 ? resolutionMessages.join("\n\n") : fallbackMessage;
+
+            await createListerNotification({
+                toUser: notification.metadata.sentBy,
+                title,
+                message,
+                type: "system",
+                metadata: {
+                    sourceNotificationId: notification._id,
+                    resolvedBy: req.user?._id,
+                    resolvedByName: req.user?.name,
+                    resolutionMessages,
+                },
+            });
+        } catch (error) {
+            console.error("Failed to notify user about resolved issue", error);
+        }
+    }
+
     return res
         .status(200)
         .json(new ApiResponse(200, notification, "Notification marked as read"));
 });
 
-export { notifyLister, getUserNotifications, getAdminNotifications, markAsRead };
+const sendToAdmin = asyncHandler(async (req, res) => {
+    const { title, message, contactEmail, contactName } = req.body || {};
+
+    const normalizedTitle = validateString(title || "User query", "Title", { max: 200 });
+    const normalizedMessage = validateString(message, "Message", { max: 2000 });
+
+    let resolvedEmail = req.user?.email;
+    if (!resolvedEmail && typeof contactEmail === "string") {
+        resolvedEmail = contactEmail.trim();
+    }
+
+    let resolvedName =
+        req.user?.name ||
+        req.user?.email ||
+        (typeof contactName === "string" ? contactName.trim() : "");
+
+    if (!resolvedName) {
+        resolvedName = resolvedEmail || "Anonymous user";
+    }
+
+    if (!resolvedEmail) {
+        throw new ApiError(400, "Please provide a contact email so the admin can respond");
+    }
+
+    const notification = await createAdminNotification({
+        title: normalizedTitle,
+        message: normalizedMessage,
+        type: "message",
+        metadata: {
+            sentBy: req.user?._id ?? null,
+            sentByName: resolvedName,
+            sentByEmail: resolvedEmail,
+            isAnonymous: !req.user,
+        },
+    });
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, notification, "Message sent to admin"));
+});
+
+export { notifyLister, getUserNotifications, getAdminNotifications, markAsRead, sendToAdmin };

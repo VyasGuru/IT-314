@@ -8,6 +8,7 @@ import { PropertyDetails } from '../landing_page/PropertyDetails';
 import { getUserProfile, updateUserDetails, resetPassword } from '../../services/userApi';
 import { getSavedListings, removeSavedListing } from '../../services/savedListingApi';
 import { getComparedProperties } from '../../services/comparisonApi';
+import { getUserNotifications, markUserNotificationAsRead } from '../../services/notificationApi';
 import { formatLocation } from '../../utils/formatLocation';
 import MyListings from './MyListings';
 import {
@@ -255,9 +256,23 @@ const UserDashboard = () => {
         setListedProperties([]);
       }
 
-      // Notifications - would need a separate endpoint
-      // For now, using empty array until notification API is set up
-      setNotifications([]);
+      try {
+        const notificationsResponse = await getUserNotifications({ limit: 50 });
+        const payload = notificationsResponse?.data;
+        const normalizedNotifications = Array.isArray(payload?.notifications)
+          ? payload.notifications.map((notification) => ({
+            id: notification._id,
+            title: notification.title || 'Notification',
+            message: notification.message || '',
+            isRead: Boolean(notification.isRead),
+            createdAt: notification.createdAt || notification.updatedAt,
+          }))
+          : [];
+        setNotifications(normalizedNotifications);
+      } catch (notificationError) {
+        console.error('Error fetching notifications:', notificationError);
+        setNotifications([]);
+      }
 
       setLoading(false);
     } catch (error) {
@@ -330,10 +345,15 @@ const handleViewDetails = (propertyId) => {
     }
   };
 
-  const markNotificationAsRead = (notificationId) => {
-    setNotifications(notifications.map(n =>
-      n.id === notificationId ? { ...n, read: true } : n
-    ));
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      await markUserNotificationAsRead(notificationId);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
+      );
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
   const handleDeleteListing = (propertyId) => {
@@ -558,7 +578,7 @@ for (let pair of formData.entries()) {
               { id: 'saved', icon: Heart, label: 'Saved Properties', count: savedProperties.length },
               { id: 'listed', icon: Building2, label: 'My Listings', count: listedProperties.length },
               { id: 'comparisons', icon: GitCompare, label: 'Comparisons', count: comparedProperties.length },
-              { id: 'notifications', icon: Bell, label: 'Notifications', count: notifications.filter(n => !n.read).length, alert: true },
+              { id: 'notifications', icon: Bell, label: 'Notifications', count: notifications.filter(n => !n.isRead).length, alert: true },
               { id: 'settings', icon: Settings, label: 'Settings' }
             ].map(item => (
               <button
@@ -751,26 +771,34 @@ for (let pair of formData.entries()) {
             {
               activeTab === 'notifications' && (
                 <div className="flex flex-col gap-2">
-                  {notifications.map(notification => (
-                    <div
-                      key={notification.id}
-                      onClick={() => markNotificationAsRead(notification.id)}
-                      className={`flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all duration-300 hover:bg-gray-50 hover:border-blue-600 ${notification.read ? 'bg-white border-gray-200' : 'bg-blue-50 border-l-4 border-blue-600'
-                        }`}
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notification.read ? 'bg-gray-200 text-blue-600' : 'bg-blue-200 text-blue-600'
-                        }`}>
-                        <Bell size={20} />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800 mb-1">{notification.message}</p>
-                        <p className="text-xs text-gray-500">{notification.date}</p>
-                      </div>
-                      {!notification.read && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-blue-600 flex-shrink-0"></div>
-                      )}
+                  {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                      <Bell size={32} className="mb-3" />
+                      <p>No notifications yet.</p>
                     </div>
-                  ))}
+                  ) : (
+                    notifications.map(notification => (
+                      <div
+                        key={notification.id}
+                        onClick={() => markNotificationAsRead(notification.id)}
+                        className={`flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all duration-300 hover:bg-gray-50 hover:border-blue-600 ${notification.isRead ? 'bg-white border-gray-200' : 'bg-blue-50 border-l-4 border-blue-600'
+                          }`}
+                      >
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${notification.isRead ? 'bg-gray-200 text-blue-600' : 'bg-blue-200 text-blue-600'
+                          }`}>
+                          <Bell size={20} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-800 mb-1">{notification.title}</p>
+                          <p className="text-sm text-gray-600 mb-1">{notification.message || 'No additional details provided.'}</p>
+                          <p className="text-xs text-gray-500">{notification.createdAt ? new Date(notification.createdAt).toLocaleString() : ''}</p>
+                        </div>
+                        {!notification.isRead && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-blue-600 flex-shrink-0"></div>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               )
             }
