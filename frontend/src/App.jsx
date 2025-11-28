@@ -3,6 +3,7 @@ import { useAuth } from "./contexts/AuthContext";
 import ScrollToTop from "./components/ScrollToTop";
 import PreventBackNavigation from "./components/PreventBackNavigation";
 import { SavedListingsProvider } from "./contexts/SavedListingsContext";
+import { Toaster } from 'react-hot-toast';
 
 import { Header } from "./components/landing_page/Header";
 import { Footer } from "./components/landing_page/Footer";
@@ -39,6 +40,7 @@ export default function App() {
   return (
     <SavedListingsProvider>
       <div className="min-h-screen bg-background">
+        <Toaster position="top-center" reverseOrder={false} />
         <PreventBackNavigation />
         <ScrollToTop />
         <Routes>

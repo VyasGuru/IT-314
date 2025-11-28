@@ -568,6 +568,15 @@ const getUserListings = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, userListings, "User listings retrieved successfully"));
 });
 
+const getListingByPropertyId = asyncHandler(async (req, res) => {
+    const { propertyId } = req.params;
+    const listing = await Listing.findOne({ propertyId: propertyId });
+    if (!listing) {
+        throw new ApiError(404, "Listing not found for this property");
+    }
+    res.status(200).json(new ApiResponse(200, listing, "Listing found"));
+});
+
 export {
     getFilteredProperties,
     createProperty,
@@ -576,4 +585,5 @@ export {
     deleteProperty,
     reviewPropertyStatus,
     getUserListings,
+    getListingByPropertyId,
 }

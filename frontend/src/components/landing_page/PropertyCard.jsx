@@ -5,10 +5,15 @@ import { formatLocation } from "../../utils/formatLocation";
 import { useComparison } from "../../contexts/ComparisonContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useSavedListings } from "../../contexts/SavedListingsContext";
+import { estimatePriceService } from '../../services/priceEstimatorService';
+import { getListingByPropertyId } from "../../services/propertyApi";
+import toast from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 
 export function PropertyCard({
   id,
   _id,
+  listingId,
   title,
   price,
   location,
@@ -65,6 +70,36 @@ export function PropertyCard({
       onViewDetails(propertyId);
     }
   };
+
+  const handleEstimatePrice = async (event) => {
+    event.stopPropagation();
+    if (!propertyId) {
+      toast.error("Property ID not available for price estimation.");
+      return;
+    }
+    try {
+      const listingResponse = await getListingByPropertyId(propertyId);
+      const listingId = listingResponse?.data?._id;
+
+      if (!listingId) {
+        toast.error("Could not find a listing associated with this property.");
+        return;
+      }
+
+      const response = await estimatePriceService(listingId);
+      if (response.estimatedPrice) {
+        toast.success(`Estimated Selling Price: ₹${response.estimatedPrice.toLocaleString('en-IN')}`);
+      } else if (response.estimatedRent) {
+        toast.success(`Estimated Rent Price: ₹${response.estimatedRent.toLocaleString('en-IN')}`);
+      } else {
+        toast(response.message || "Could not estimate price for this property.");
+      }
+    } catch (error) {
+      toast.error(`Error estimating price: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+
 
 
   // ===== COMPARE TOGGLE =====
@@ -197,6 +232,14 @@ export function PropertyCard({
           >
             <GitCompare className="h-4 w-4" />
             {isCompared ? "In Compare" : "Compare"}
+          </button>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row mt-2">
+          <button
+            onClick={handleEstimatePrice}
+            className="w-full flex items-center justify-center gap-2 border border-purple-600 text-purple-600 rounded-lg px-4 py-2 hover:bg-purple-50 transition-colors"
+          >
+            Estimate Price
           </button>
         </div>
       </div>

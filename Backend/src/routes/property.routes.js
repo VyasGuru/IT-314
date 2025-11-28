@@ -4,7 +4,8 @@ import { getFilteredProperties,
          updatePropertyDetails,
          deleteProperty,
          updatePropertyStatus,
-         getUserListings
+         getUserListings,
+         getListingByPropertyId
        } from "../controllers/property.controller.js";
 
 import { verifyFirebaseToken, verifyLister } from "../middlewares/authMiddleware.js"; 
@@ -21,6 +22,8 @@ router.route("/my-listings").get(
     verifyFirebaseToken,
     getUserListings
 )
+
+router.route("/listings/by-property/:propertyId").get(getListingByPropertyId);
 
 router.route("/create").post(
     verifyFirebaseToken, 
@@ -49,8 +52,3 @@ router.route("/delete/:propertyId").delete(
 );
 
 export default router
-
-
-
-
-
