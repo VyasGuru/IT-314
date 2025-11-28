@@ -3,7 +3,14 @@ import { auth } from "../firebase";
 
 // Configure global axios default baseURL so direct `axios` calls
 // (used in some components) respect the environment setting.
-const DEFAULT_BACKEND = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_URL || "/api";
+// If an explicit backend host is provided (e.g. https://it-314.onrender.com),
+// ensure requests target the API mount point by appending `/api` when needed.
+const envBackend = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_URL;
+let DEFAULT_BACKEND = envBackend ? envBackend.replace(/\/+$/g, "") : "/api";
+// If using a full origin like https://example.com, make sure it points to the API
+if (DEFAULT_BACKEND !== "/api" && !DEFAULT_BACKEND.endsWith("/api")) {
+  DEFAULT_BACKEND = `${DEFAULT_BACKEND}/api`;
+}
 axios.defaults.baseURL = DEFAULT_BACKEND;
 
 // Create axios instance with base configuration
