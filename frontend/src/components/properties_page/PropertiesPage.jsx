@@ -3,12 +3,15 @@ import { useLocation } from "react-router-dom";
 import { getProperties } from "../../services/propertyApi";
 import { PropertyCard } from "../landing_page/PropertyCard";
 import { PropertyFilters } from "../landing_page/PropertyFilters";
+import { PropertyDetails } from "../landing_page/PropertyDetails";
 import { Search } from "lucide-react";
 
 const PropertiesPage = () => {
   const location = useLocation();
   const [properties, setProperties] = useState([]);
   const [filteredProperties, setFilteredProperties] = useState([]);
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [filters, setFilters] = useState(
     location.state?.filters || {
       searchTerm: "",
@@ -38,7 +41,7 @@ const PropertiesPage = () => {
         // Set empty arrays on error so UI doesn't break
         setProperties([]);
         setFilteredProperties([]);
-        
+
         // Show user-friendly error message
         if (error.message && error.message.includes("timeout")) {
           console.error("Backend server timeout. Please ensure the backend is running on http://localhost:8000");
@@ -53,6 +56,12 @@ const PropertiesPage = () => {
 
   const handleFiltersChange = (newFilters) => {
     setFilters((prevFilters) => ({ ...prevFilters, ...newFilters }));
+  };
+
+  const handleViewDetails = (propertyId) => {
+    const property = filteredProperties.find((p) => p._id === propertyId);
+    setSelectedProperty(property || null);
+    setIsDetailsOpen(true);
   };
 
   return (
@@ -85,9 +94,24 @@ const PropertiesPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredProperties.map((property) => (
-          <PropertyCard key={property._id} {...property} />
+          <PropertyCard
+            key={property._id}
+            {...property}
+            onViewDetails={handleViewDetails}
+          />
         ))}
       </div>
+
+      {isDetailsOpen && selectedProperty && (
+        <PropertyDetails
+          property={selectedProperty}
+          isOpen={isDetailsOpen}
+          onClose={() => {
+            setIsDetailsOpen(false);
+            setSelectedProperty(null);
+          }}
+        />
+      )}
     </section>
   );
 };
