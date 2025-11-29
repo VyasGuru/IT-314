@@ -11,7 +11,7 @@ const teamMembers = [
   { name: 'Sri Sai' },
   { name: 'Khush Patel' },
   { name: 'Rushi Gadiya' },
-  { name: 'mitwa Ninama' },
+  { name: 'Mitwa Ninama' },
   { name: 'Jeinil' },
   { name: 'Nandini Gadhvi' },
   { name: 'Prince Patel' },
@@ -40,12 +40,10 @@ const MissionSection = () => (
       <div className="prose prose-lg text-gray-700">
         <h2 className="text-3xl font-bold text-gray-900">Our Mission</h2>
         <p>
-          To empower individuals and families by providing a transparent, intuitive, and comprehensive platform for all their real estate needs. We strive to replace the complexity and stress of property transactions with clarity and confidence.
-        </p>
+          To provide a seamless and transparent platform for listing and discovering a wide range of real estate properties, including land, residential houses, and commercial buildings, empowering users to make informed decisions        </p>
         <h3 className="text-2xl font-bold text-gray-900 mt-8">Our Vision</h3>
         <p>
-          To be the most trusted and user-centric real estate marketplace, creating a future where everyone can find their perfect place to call home, seamlessly and efficiently.
-        </p>
+         To become the go-to destination for all real estate needs, where finding the perfect land, home, or commercial space is effortless, efficient, and accessible to everyone.        </p>
       </div>
       <div className="order-first md:order-last">
         <img
