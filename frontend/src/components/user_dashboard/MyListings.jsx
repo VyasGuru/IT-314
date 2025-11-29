@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Building2, Edit, Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import axios from 'axios';
+import api from '../../services/api';
 import { estimatePriceService } from '../../services/priceEstimatorService';
 import toast from 'react-hot-toast';
 import { Toaster } from 'react-hot-toast';
@@ -22,12 +22,7 @@ const MyListings = ({ listings, setListedProperties }) => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this listing?')) {
       try {
-        const token = await currentUser.getIdToken();
-        await axios.delete(`/properties/delete/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        await api.delete(`/properties/delete/${id}`);
         const updatedListings = await listings.filter((listing) => listing.property._id !== id);
         await setListedProperties(updatedListings);
       } catch (err) {

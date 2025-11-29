@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import {
     BedDouble,
@@ -204,8 +205,7 @@ const AddListing = () => {
         setError(null);
         setSuccess(null);
 
-        try {
-            const token = await currentUser.getIdToken();
+       try {
             const data = new FormData();
 
             Object.keys(formData).forEach((key) => {
@@ -218,9 +218,8 @@ const AddListing = () => {
 
             images.forEach((file) => data.append('images', file));
 
-            await axios.post('/properties/create', data, {
+            await api.post('/properties/create', data, {
                 headers: {
-                    Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data',
                 },
             });
