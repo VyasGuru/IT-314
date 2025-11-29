@@ -4,26 +4,18 @@ import { Link } from 'react-router-dom';
 
 const missionImage = 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop';
 
-// Data for team members - makes it easy to add/remove people
+// Data for team members
 const teamMembers = [
-  {
-    name: 'Jane Doe',
-    title: 'Founder & CEO',
-    imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1887&auto=format&fit=crop',
-    bio: 'With over 15 years of experience in the real estate industry, Jane founded FindMySquare to simplify the property search for everyone.'
-  },
-  {
-    name: 'John Smith',
-    title: 'Chief Technology Officer',
-    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1887&auto=format&fit=crop',
-    bio: 'John is the visionary behind our cutting-edge platform, ensuring a seamless and intuitive user experience.'
-  },
-  {
-    name: 'Emily Johnson',
-    title: 'Head of Sales',
-    imageUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=1961&auto=format&fit=crop',
-    bio: 'Emily leads our dedicated team of property experts, connecting clients with their dream homes across the country.'
-  },
+  { name: 'Guru Vyas' },
+  { name: 'Sneh Shah' },
+  { name: 'Sri Sai' },
+  { name: 'Khush Patel' },
+  { name: 'Rushi Gadiya' },
+  { name: 'mitwa Ninama' },
+  { name: 'Jeinil' },
+  { name: 'Nandini Gadhvi' },
+  { name: 'Prince Patel' },
+  { name: 'Hardik Vala' },
 ];
 
 
@@ -33,7 +25,7 @@ const HeroSection = () => (
   <div className="bg-slate-50">
     <div className="max-w-7xl mx-auto py-24 px-4 sm:px-6 lg:px-8 text-center">
       <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">
-        Connecting You with Your Future 
+        Connecting You with Your Future
       </h1>
       <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-600">
         FindMySquare was born from a simple idea: to make finding the perfect property as easy and enjoyable as possible. Discover our story, our mission, and the people dedicated to helping you.
@@ -56,8 +48,8 @@ const MissionSection = () => (
         </p>
       </div>
       <div className="order-first md:order-last">
-        <img 
-          src={missionImage} 
+        <img
+          src={missionImage}
           alt="Team collaborating in a modern office"
           className="rounded-lg shadow-xl w-full h-full object-cover"
         />
@@ -67,43 +59,43 @@ const MissionSection = () => (
 );
 
 const ValuesSection = () => (
-    <div className="bg-slate-50 py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-                <h2 className="text-3xl font-extrabold text-gray-900">Our Core Values</h2>
-                <p className="mt-4 text-lg text-gray-600">The principles that guide our every decision.</p>
-            </div>
-            <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-12">
-                {/* Value 1 */}
-                <div className="text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 text-blue-600">
-                        {/* Inline SVG for a 'Sparkle' icon */}
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L12 22M12 2L6 8M12 2L18 8M12 22L6 16M12 22L18 16M2 12L22 12M2 12L8 6M2 12L8 18M22 12L16 6M22 12L16 18" opacity="0.5"/><path d="M12 2L12 22M12 2L6 8M12 2L18 8M12 22L6 16M12 22L18 16M2 12L22 12M2 12L8 6M2 12L8 18M22 12L16 6M22 12L16 18"/></svg>
-                    </div>
-                    <h3 className="mt-6 text-xl font-semibold text-gray-900">Integrity</h3>
-                    <p className="mt-2 text-base text-gray-600">We operate with complete transparency and adhere to the highest ethical standards in all our interactions.</p>
-                </div>
-                {/* Value 2 */}
-                <div className="text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 text-blue-600">
-                         {/* Inline SVG for a 'Users' icon */}
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    </div>
-                    <h3 className="mt-6 text-xl font-semibold text-gray-900">Customer-Centric</h3>
-                    <p className="mt-2 text-base text-gray-600">Our clients are at the heart of everything we do. Your success and satisfaction are our ultimate goals.</p>
-                </div>
-                {/* Value 3 */}
-                <div className="text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 text-blue-600">
-                        {/* Inline SVG for a 'Zap' icon */}
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2z"/></svg>
-                    </div>
-                    <h3 className="mt-6 text-xl font-semibold text-gray-900">Innovation</h3>
-                    <p className="mt-2 text-base text-gray-600">We leverage cutting-edge technology to constantly improve the property search experience for our users.</p>
-                </div>
-            </div>
+  <div className="bg-slate-50 py-24">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="text-center">
+        <h2 className="text-3xl font-extrabold text-gray-900">Our Core Values</h2>
+        <p className="mt-4 text-lg text-gray-600">The principles that guide our every decision.</p>
+      </div>
+      <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-12">
+        {/* Value 1 */}
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 text-blue-600">
+            {/* Inline SVG for a 'Sparkle' icon */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L12 22M12 2L6 8M12 2L18 8M12 22L6 16M12 22L18 16M2 12L22 12M2 12L8 6M2 12L8 18M22 12L16 6M22 12L16 18" opacity="0.5" /><path d="M12 2L12 22M12 2L6 8M12 2L18 8M12 22L6 16M12 22L18 16M2 12L22 12M2 12L8 6M2 12L8 18M22 12L16 6M22 12L16 18" /></svg>
+          </div>
+          <h3 className="mt-6 text-xl font-semibold text-gray-900">Integrity</h3>
+          <p className="mt-2 text-base text-gray-600">We operate with complete transparency and adhere to the highest ethical standards in all our interactions.</p>
         </div>
+        {/* Value 2 */}
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 text-blue-600">
+            {/* Inline SVG for a 'Users' icon */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+          </div>
+          <h3 className="mt-6 text-xl font-semibold text-gray-900">Customer-Centric</h3>
+          <p className="mt-2 text-base text-gray-600">Our clients are at the heart of everything we do. Your success and satisfaction are our ultimate goals.</p>
+        </div>
+        {/* Value 3 */}
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 text-blue-600">
+            {/* Inline SVG for a 'Zap' icon */}
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2z" /></svg>
+          </div>
+          <h3 className="mt-6 text-xl font-semibold text-gray-900">Innovation</h3>
+          <p className="mt-2 text-base text-gray-600">We leverage cutting-edge technology to constantly improve the property search experience for our users.</p>
+        </div>
+      </div>
     </div>
+  </div>
 );
 
 
@@ -112,23 +104,12 @@ const TeamSection = () => (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="text-center">
         <h2 className="text-3xl font-extrabold text-gray-900">Meet Our Team</h2>
-        <p className="mt-4 text-lg text-gray-600">The passionate professionals dedicated to making your dream a reality.</p>
+        <p className="mt-4 text-lg text-gray-600">The group members of this project.</p>
       </div>
-      <div className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-24">
+      <div className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {teamMembers.map((member) => (
-          <div key={member.name} className="text-center">
-            <div className="relative inline-block">
-              <img
-                className="h-40 w-40 rounded-full object-cover mx-auto"
-                src={member.imageUrl}
-                alt={member.name}
-              />
-            </div>
-            <div className="mt-4">
-              <h3 className="text-xl font-semibold text-gray-900">{member.name}</h3>
-              <p className="text-blue-600 font-medium">{member.title}</p>
-              <p className="mt-2 text-base text-gray-600">{member.bio}</p>
-            </div>
+          <div key={member.name} className="text-center p-6 bg-slate-50 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+            <h3 className="text-xl font-semibold text-gray-900">{member.name}</h3>
           </div>
         ))}
       </div>
