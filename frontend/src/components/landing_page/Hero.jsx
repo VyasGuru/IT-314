@@ -16,7 +16,7 @@ export function Hero({ onSearch }) {
         {/* Hero Text */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
-            Find Your Dream Home
+            Find Your Dream Real Estate
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Discover the perfect property with our extensive collection of
