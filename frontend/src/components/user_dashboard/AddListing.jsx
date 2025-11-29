@@ -41,6 +41,17 @@ const amenityIcons = {
     furnished: Sofa,
 };
 
+const PROPERTY_TYPE_OPTIONS = [
+    { value: 'House', label: 'House' },
+    { value: 'Apartment', label: 'Apartment' },
+    { value: 'Villa', label: 'Villa' },
+    { value: 'Commercial', label: 'Commercial' },
+    { value: 'Land', label: 'Land' },
+];
+
+const YEAR_MIN = 1800;
+const YEAR_MAX = new Date().getFullYear() + 5;
+
 const InputField = ({ icon, name, placeholder, value, onChange, onBlur, type = 'text', required = true, min, maxLength }) => (
     <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">{icon}</div>
@@ -145,30 +156,6 @@ const AddListing = () => {
         }));
     };
 
-
-
-
-    const isValidDate = (dateString) => {
-        const datePattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-        const match = dateString.match(datePattern);
-        if (!match) return false;
-
-        const day = parseInt(match[1], 10);
-        const month = parseInt(match[2], 10);
-        const year = parseInt(match[3], 10);
-
-        if (month < 1 || month > 12) return false;
-        if (day < 1 || day > 31) return false;
-
-        const daysInMonth = new Date(year, month, 0).getDate();
-        if (day > daysInMonth) return false;
-
-        const currentYear = new Date().getFullYear();
-        if (year < 1800 || year > currentYear + 5) return false;
-
-        return true;
-    };
-
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
         setImages(prev => [...prev, ...files]);
@@ -185,13 +172,6 @@ const AddListing = () => {
         }
     };
 
-    const handleDateBlur = (e) => {
-        const { value } = e.target;
-        if (value && !isValidDate(value)) {
-            setError('Please enter a valid date in DD/MM/YYYY format.');
-        }
-    };
-
     const validateForm = () => {
         if (!formData.title.trim()) return 'Title is required.';
         if (!formData.description.trim()) return 'Description is required.';
@@ -200,7 +180,10 @@ const AddListing = () => {
         if (Number(formData.bedrooms) < 0) return 'Bedrooms cannot be negative.';
         if (Number(formData.bathrooms) < 0) return 'Bathrooms cannot be negative.';
         if (Number(formData.balconies) < 0) return 'Balconies cannot be negative.';
-        if (!isValidDate(formData.yearBuild)) return 'Please enter a valid Year Built in DD/MM/YYYY format.';
+        const numericYear = Number(formData.yearBuild);
+        if (!Number.isInteger(numericYear) || numericYear < YEAR_MIN || numericYear > YEAR_MAX) {
+            return `Year Built must be between ${YEAR_MIN} and ${YEAR_MAX}.`;
+        }
         if (!formData.propertyType) return 'Please select a Property Type.';
         if (!/^\d{6}$/.test(formData.location.zipCode)) return 'Zip Code must be exactly 6 digits.';
         if (images.length === 0) return 'Please upload at least one image.';
@@ -235,7 +218,7 @@ const AddListing = () => {
 
             images.forEach((file) => data.append('images', file));
 
-            await axios.post('/api/properties/create', data, {
+            await axios.post('/properties/create', data, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data',
@@ -246,7 +229,8 @@ const AddListing = () => {
             setTimeout(() => navigate('/dashboard'), 2000);
         } catch (err) {
             console.error('Error creating property:', err);
-            setError('Failed to create property. Please try again.');
+            const backendMessage = err.response?.data?.message || err.message;
+            setError(backendMessage || 'Failed to create property. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -296,7 +280,16 @@ const AddListing = () => {
                                 <InputField icon={<Bath className="text-gray-400" />} name="bathrooms" placeholder="Bathrooms" value={formData.bathrooms} onChange={handleChange} type="number" min="0" />
                                 <InputField icon={<Milestone className="text-gray-400" />} name="size" placeholder="Size (sq ft)" value={formData.size} onChange={handleChange} type="number" min="0" />
                                 <InputField icon={<Building className="text-gray-400" />} name="balconies" placeholder="Balconies" value={formData.balconies} onChange={handleChange} type="number" min="0" />
-                                <InputField icon={<Calendar className="text-gray-400" />} name="yearBuild" placeholder="DD/MM/YYYY" value={formData.yearBuild} onChange={handleChange} onBlur={handleDateBlur} />
+                                <InputField
+                                    icon={<Calendar className="text-gray-400" />}
+                                    name="yearBuild"
+                                    placeholder="Year Built"
+                                    value={formData.yearBuild}
+                                    onChange={handleChange}
+                                    type="number"
+                                    min={YEAR_MIN}
+                                    max={YEAR_MAX}
+                                />
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                         <Building className="text-gray-400" />
@@ -309,11 +302,11 @@ const AddListing = () => {
                                         required
                                     >
                                         <option value="">Select Property Type</option>
-                                        <option value="residential">House</option>
-                                        <option value="commercial">Commercial</option>
-                                        <option value="land">Land</option>
-                                        <option value="land">Villa</option>
-                                        <option value="rental">Apartment</option>
+                                        {PROPERTY_TYPE_OPTIONS.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
                                     </select>
                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                         <ChevronDown className="h-5 w-5 text-gray-400" />

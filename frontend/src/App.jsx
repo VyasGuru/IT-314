@@ -32,10 +32,17 @@ export default function App() {
     ? {
         name: currentUser.displayName || currentUser.email,
         email: currentUser.email,
-        picture: currentUser.photoURL,
+        picture: currentUser.photoURL || null,
         role: userRole,
       }
     : null;
+
+  // If the backend has a profile photo (stored outside Firebase), prefer it when Firebase photoURL is missing
+  // Get backend user from AuthContext if available
+  const { backendUser } = useAuth();
+  if (backendUser && backendUser.photo) {
+    user && (user.picture = user.picture || backendUser.photo);
+  }
 
   return (
     <SavedListingsProvider>

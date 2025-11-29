@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '../landing_page/Header';
 import { PropertyDetails } from '../landing_page/PropertyDetails';
 import { getListingByPropertyId } from '../../services/propertyApi';
+import { getUserProfile, updateUserDetails, resetPassword } from '../../services/userApi';
 import { getSavedListings, removeSavedListing } from '../../services/savedListingApi';
 import { getComparedProperties } from '../../services/comparisonApi';
 import toast from 'react-hot-toast';
@@ -325,7 +326,7 @@ const UserDashboard = () => {
 
       try {
         const token = await currentUser.getIdToken();
-        const response = await axios.get('/api/properties/my-listings', {
+        const response = await axios.get('/properties/my-listings', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -849,7 +850,7 @@ const UserDashboard = () => {
             }
 
             {/* My Listings Tab */}
-            {activeTab === 'listed' && <MyListings listings={listedProperties} />}
+            {activeTab === 'listed' && <MyListings listings={listedProperties} setListedProperties={setListedProperties} />}
 
             {/* Comparisons Tab */}
             {
@@ -1302,10 +1303,11 @@ const UserDashboard = () => {
                 }
               >
                 <option value="">Select Property Type</option>
-                <option value="residential">Residential</option>
-                <option value="commercial">Commercial</option>
-                <option value="land">Land</option>
-                <option value="rental">Rental</option>
+                <option value="House">House</option>
+                <option value="Apartment">Apartment</option>
+                <option value="Villa">Villa</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Land">Land</option>
               </select>
 
               <input className="border p-2 rounded w-full" placeholder="Number of balconies"

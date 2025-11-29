@@ -1,5 +1,5 @@
 import { MapPin, Bed, Bath, Square, Heart, Eye, GitCompare } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatLocation } from "../../utils/formatLocation";
 import { useComparison } from "../../contexts/ComparisonContext";
@@ -48,6 +48,31 @@ export function PropertyCard({
   );
 
   const isUpdating = updatingId === propertyId;
+
+  const [lister, setLister] = useState(null);
+
+  useEffect(() => {
+    const fetchLister = async () => {
+      if (propertyId) {
+        try {
+          const response = await getListingByPropertyId(propertyId);
+          if (response?.data?.listerFirebaseUid) {
+            setLister(response.data.listerFirebaseUid);
+          }
+        } catch (error) {
+          console.error("Failed to fetch lister details", error);
+        }
+      }
+    };
+    // Prefer lister provided in props (backend may include it), otherwise fetch from API
+    if (rest?.lister) {
+      setLister(rest.lister);
+    } else if (rest?.listing && rest.listing.lister) {
+      setLister(rest.listing.lister);
+    } else {
+      fetchLister();
+    }
+  }, [propertyId]);
 
   const propertyPayload = {
     _id: propertyId,
@@ -212,6 +237,23 @@ export function PropertyCard({
           </div>
         </div>
 
+        {/* Lister Details */}
+        {lister && (
+          <div className="flex items-center gap-3 mb-4 p-2 bg-gray-50 rounded-lg border border-gray-100">
+            <img
+              src={lister.photo || "https://ui-avatars.com/api/?name=" + encodeURIComponent(lister.name)}
+              alt={lister.name}
+              className="w-10 h-10 rounded-full object-cover border border-gray-200"
+              onError={(e) => (e.target.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(lister.name))}
+            />
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-semibold text-gray-900 truncate">{lister.name}</span>
+              <span className="text-xs text-gray-500 truncate">{lister.email}</span>
+              {lister.phone && <span className="text-xs text-gray-400">{lister.phone}</span>}
+            </div>
+          </div>
+        )}
+
         {/* Buttons */}
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
@@ -225,8 +267,8 @@ export function PropertyCard({
           <button
             onClick={handleComparisonToggle}
             className={`w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2 transition-colors ${isCompared
-                ? "bg-green-600 text-white hover:bg-green-700"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              ? "bg-green-600 text-white hover:bg-green-700"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             disabled={isUpdating}
           >
