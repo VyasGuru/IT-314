@@ -86,10 +86,10 @@ app.use("/api/users", userRoutes);
 app.use("/api/comparison", propertyComparisonRoutes);
 app.use("/api", priceEstimatorRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/listings", adminListingRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/lister-verification", listerVerificationRoutes);
-app.use("/api/admin/listings", adminListingRoutes);
 app.use("/api", chatbotRoutes);
 app.use("/api/reviews", reviewRoutes);
 

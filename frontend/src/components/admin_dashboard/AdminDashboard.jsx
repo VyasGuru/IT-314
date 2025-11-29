@@ -3,6 +3,7 @@ import { ShieldCheck, MessageSquare, LogOut, Eye } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { verifyListing } from '../../services/adminApi';
 
 const STORAGE_KEY = 'adminDashboardActiveTab';
 const RESOLUTION_OPTIONS = [
@@ -22,20 +23,9 @@ const AdminDashboard = () => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
-  const [listings, setListings] = useState([
-    { id: 1, title: 'Spacious 3BHK Villa', location: 'Surat, GJ', status: 'pending' },
-    { id: 2, title: 'Cozy Studio Apartment', location: 'Ahmedabad, GJ', status: 'pending' },
-    { id: 3, title: '2BHK Modern Flat', location: 'Rajkot, GJ', status: 'approved' },
-  ]);
+  const [listings, setListings] = useState([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
+  const [listingsError, setListingsError] = useState(null);
 
   const [issues, setIssues] = useState([]);
   const [issuesLoading, setIssuesLoading] = useState(false);
@@ -47,6 +37,20 @@ const AdminDashboard = () => {
   const [customResolutionMessage, setCustomResolutionMessage] = useState('');
   const [resolutionError, setResolutionError] = useState('');
   const [resolutionSubmitting, setResolutionSubmitting] = useState(false);
+
+  const fetchListings = async () => {
+    setListingsLoading(true);
+    setListingsError(null);
+    try {
+      const response = await api.get('/properties');
+      setListings(response?.data?.data || []);
+    } catch (error) {
+      console.error('Failed to load listings', error);
+      setListingsError('Unable to load listings right now.');
+    } finally {
+      setListingsLoading(false);
+    }
+  };
 
   const fetchIssues = async () => {
     setIssuesLoading(true);
@@ -79,13 +83,21 @@ const AdminDashboard = () => {
       window.localStorage.setItem(STORAGE_KEY, activeTab);
     }
 
+    if (activeTab === 'listings') {
+      fetchListings();
+    }
     if (activeTab === 'issues') {
       fetchIssues();
     }
   }, [activeTab]);
 
-  const approveListing = (id) => {
-    setListings(listings.map(l => l.id === id ? { ...l, status: 'approved' } : l));
+  const approveListing = async (id) => {
+    try {
+      await verifyListing(id);
+      setListings(listings.map(l => l.listing._id === id ? { ...l, listing: { ...l.listing, status: 'verified' } } : l));
+    } catch (error) {
+      console.error('Failed to verify listing', error);
+    }
   };
 
   const rejectListing = (id) => {
@@ -163,6 +175,15 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
@@ -214,16 +235,18 @@ const AdminDashboard = () => {
           {activeTab === 'listings' && (
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Pending Listings</h2>
+              {listingsLoading && <p>Loading listings...</p>}
+              {listingsError && <p className="text-red-500">{listingsError}</p>}
               <div className="grid grid-cols-1 gap-6">
-                {listings.filter(l => l.status === 'pending').map(listing => (
-                  <div key={listing.id} className="bg-white rounded-xl overflow-hidden border border-gray-200 p-6 flex justify-between items-center">
+                {listings.filter(l => l.listing && l.listing.status === 'pending').map(listing => (
+                  <div key={listing._id} className="bg-white rounded-xl overflow-hidden border border-gray-200 p-6 flex justify-between items-center">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-800">{listing.title}</h3>
-                      <p className="text-gray-600">{listing.location}</p>
+                      <p className="text-gray-600">{listing.location.city}, {listing.location.state}</p>
                     </div>
                     <div className="flex gap-4">
-                      <button onClick={() => approveListing(listing.id)} className="px-4 py-2 bg-green-500 text-white rounded-lg">Approve</button>
-                      <button onClick={() => rejectListing(listing.id)} className="px-4 py-2 bg-red-500 text-white rounded-lg">Reject</button>
+                      <button onClick={() => approveListing(listing.listing._id)} className="px-4 py-2 bg-green-500 text-white rounded-lg">Verify</button>
+                      <button onClick={() => rejectListing(listing.listing._id)} className="px-4 py-2 bg-red-500 text-white rounded-lg">Reject</button>
                     </div>
                   </div>
                 ))}

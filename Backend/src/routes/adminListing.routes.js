@@ -1,10 +1,14 @@
 import express from "express";
-import { deleteListings } from "../controllers/adminListing.controller.js";
-import { verifyFirebaseToken, verifyAdmin } from "../middlewares/authMiddleware.js";
+import { verifyListing } from "../controllers/adminListing.controller.js";
+import { verifyAdmin, verifyFirebaseToken } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// POST /api/admin/listings/delete
-router.post("/delete", verifyFirebaseToken, verifyAdmin, deleteListings);
+router.patch(
+    "/:listingId/verify",
+    verifyFirebaseToken,
+    verifyAdmin,
+    verifyListing
+);
 
 export default router;
