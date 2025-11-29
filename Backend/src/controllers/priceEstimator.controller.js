@@ -1,106 +1,144 @@
 import { Property } from '../models/property.models.js';
 import { Listing } from '../models/listing.models.js';
 
-const calculateSimilarityScore = (targetProperty, candidateProperty) => {
+
+const calculateSimilarityScore = (target, candidate) => {
   let score = 0;
 
-  // Size difference
-  const sizeDifference = Math.abs(targetProperty.size - candidateProperty.size);
-  score += 1 / (1 + sizeDifference); // Normalize and add to score
+  // size or area
+  const sizeDiff = Math.abs(target.size - candidate.size);
+  score += 3 / (1 + sizeDiff);   // Weighted heavily
 
-  // Bedrooms difference
-  const bedroomsDifference = Math.abs(targetProperty.bedrooms - candidateProperty.bedrooms);
-  score += 1 / (1 + bedroomsDifference);
+  // beds
+  const bedDiff = Math.abs(target.bedrooms - candidate.bedrooms);
+  score += 2 / (1 + bedDiff);
 
-  // Bathrooms difference
-  const bathroomsDifference = Math.abs(targetProperty.bathrooms - candidateProperty.bathrooms);
-  score += 1 / (1 + bathroomsDifference);
+  //bathrooms
+  const bathDiff = Math.abs(target.bathrooms - candidate.bathrooms);
+  score += 1.5 / (1 + bathDiff);
 
-  // Amenities match
-  for (const amenity in targetProperty.amenities) {
-    if (targetProperty.amenities[amenity] === candidateProperty.amenities[amenity]) {
-      score += 0.1;
+  //amenities
+  let amenityScore = 0;
+  for (const a in target.amenities) {
+    if (target.amenities[a] === candidate.amenities[a]) {
+      amenityScore += 0.2;
     }
   }
+  score += amenityScore;
+
+  
+  const ageDiff = Math.abs(target.yearBuild - candidate.yearBuild);
+  score += 1 / (1 + ageDiff);
 
   return score;
 };
 
-/**
- * @desc    Estimate rent and selling price for a given listing
- * @route   GET /api/estimate-price/:listingId
- * @access  Public
- */
+
 const estimatePrice = async (req, res) => {
   try {
     const { listingId } = req.params;
 
-    // 1. Find the target listing and its property
-    const targetListing = await Listing.findById(listingId).populate('propertyId');
+    // Get target listing
+    const targetListing = await Listing.findById(listingId).populate("propertyId");
     if (!targetListing) {
-      return res.status(404).json({ message: 'Listing not found' });
+      return res.status(404).json({ message: "Listing not found" });
     }
-    const targetProperty = targetListing.propertyId;
 
-    // 2. Find candidate listings
+    const targetProp = targetListing.propertyId;
+
+    // === Fetch comparable listings (same locality + same type) ===
     const candidateListings = await Listing.find({
-      status: { $in: ['active', 'verified'] },
-      _id: { $ne: listingId }, // Exclude the target listing itself
+      status: { $in: ["active", "verified"] },
+      _id: { $ne: listingId },
     }).populate({
-      path: 'propertyId',
+      path: "propertyId",
       match: {
-        'location.locality': targetProperty.location.locality,
-        'location.city': targetProperty.location.city,
-        'location.state': targetProperty.location.state,
-        'location.zipCode': targetProperty.location.zipCode,
-        propertyType: targetProperty.propertyType,
+        "location.locality": targetProp.location.locality,
+        "location.city": targetProp.location.city,
+        "location.state": targetProp.location.state,
+        propertyType: targetProp.propertyType,
       },
     });
 
-    // Filter out listings where the property did not match
-    const filteredCandidates = candidateListings.filter(l => l.propertyId);
+    // Filter invalid populate results
+    const validCandidates = candidateListings.filter(l => l.propertyId);
 
-    // 3. Calculate similarity scores
-    const scoredCandidates = filteredCandidates.map(candidateListing => {
-      const candidateProperty = candidateListing.propertyId;
-      const score = calculateSimilarityScore(targetProperty, candidateProperty);
-      return { listing: candidateListing, score };
-    });
-
-    // 4. Sort by score and take top 5
-    scoredCandidates.sort((a, b) => b.score - a.score);
-    const top5Candidates = scoredCandidates.slice(0, 5);
-
-    // 5. Calculate average price
-    if (top5Candidates.length === 0) {
+    if (validCandidates.length === 0) {
       return res.status(200).json({
-        message: 'Not enough similar properties found to provide an estimate.',
+        message: "No comparable properties found in your locality.",
         estimatedPrice: null,
         estimatedRent: null,
       });
     }
 
-    const totalPrice = top5Candidates.reduce((acc, curr) => acc + curr.listing.propertyId.price, 0);
-    const averagePrice = totalPrice / top5Candidates.length;
+    // === SCORING ===
+    const scored = validCandidates.map(listing => ({
+      listing,
+      score: calculateSimilarityScore(targetProp, listing.propertyId),
+    }));
 
-    let estimatedPrice = null;
-    let estimatedRent = null;
+    // Sort by similarity
+    scored.sort((a, b) => b.score - a.score);
 
-    if (targetProperty.propertyType === 'rental') {
-      estimatedRent = averagePrice;
-    } else {
-      estimatedPrice = averagePrice;
+    // Pick top 10
+    const top10 = scored.slice(0, 10);
+
+    // Extract prices
+    const comparablePrices = top10.map(item => item.listing.propertyId.price);
+
+    if (comparablePrices.length === 0) {
+      return res.status(200).json({
+        message: "No comparable price data available.",
+        estimatedPrice: null,
+        estimatedRent: null,
+      });
     }
 
-    res.status(200).json({
-      message: 'Price estimated successfully.',
-      estimatedPrice,
-      estimatedRent,
-      similarProperties: top5Candidates.map(c => c.listing.propertyId),
+    // === Remove Outliers 
+    const sorted = comparablePrices.slice().sort((a, b) => a - b);
+    const q1 = sorted[Math.floor(sorted.length * 0.25)];
+    const q3 = sorted[Math.floor(sorted.length * 0.75)];
+    const iqr = q3 - q1;
+    const lower = q1 - iqr * 1.5;
+    const upper = q3 + iqr * 1.5;
+
+    const cleaned = sorted.filter(p => p >= lower && p <= upper);
+
+    // Fallback if all values removed
+    const finalSet = cleaned.length > 0 ? cleaned : sorted;
+
+    // median price
+    const mid = Math.floor(finalSet.length / 2);
+    const median =
+      finalSet.length % 2 !== 0
+        ? finalSet[mid]
+        : (finalSet[mid - 1] + finalSet[mid]) / 2;
+
+    //  Normalize price 
+    const perSqft = median / targetProp.size;
+    const estimatedPrice = perSqft * targetProp.size;
+
+    
+    let estimatedRent = null;
+    let estimatedSale = null;
+
+    if (targetProp.propertyType === "rental") {
+      estimatedRent = Math.round(estimatedPrice);
+    } else {
+      estimatedSale = Math.round(estimatedPrice);
+    }
+
+    return res.status(200).json({
+      message: "Price estimated using realistic comparable market analysis.",
+      estimatedPrice: estimatedSale,
+      estimatedRent: estimatedRent,
+      comparablesUsed: finalSet.length,
+      similarProperties: top10.map(s => s.listing.propertyId),
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server Error' });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server Error during estimation" });
   }
 };
 
