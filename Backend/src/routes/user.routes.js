@@ -9,9 +9,6 @@ import {
     resetPassword,
     forgetPassword,
     updateUserDetails,
-    sendEmailVerification,
-    verifyEmail,
-    resetEmailVerification,
 } from "../controllers/user.controller.js";
 
 import { verifyFirebaseToken } from "../middlewares/authMiddleware.js";
@@ -29,10 +26,5 @@ router.get("/profile", verifyFirebaseToken, getProfile);
 router.post("/reset-password", verifyFirebaseToken, resetPassword);
 router.post("/forgot-password", forgetPassword);
 router.patch("/update", verifyFirebaseToken, upload.single("photo"), updateUserDetails);
-
-// Email verification routes
-router.post("/send-verification-email", verifyFirebaseToken, sendEmailVerification);
-router.post("/verify-email", verifyEmail);
-router.post("/reset-email-verification", resetEmailVerification);
 
 export default router;

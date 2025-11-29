@@ -12,7 +12,6 @@ import AboutPage from "./components/about_page/AboutPage";
 import ContactPage from "./components/contact_page/ContactPage";
 import LoginPage from "./components/login_page/LoginPage";
 import RegisterPage from "./components/login_page/RegisterPage";
-import VerifyEmailPage from "./components/login_page/VerifyEmailPage";
 import ForgotPasswordPage from "./components/login_page/ForgotPasswordPage";
 import AdminForgotPasswordPage from "./components/login_page/AdminForgotPasswordPage";
 import UserDashboard from "./components/user_dashboard/UserDashboard";
@@ -88,13 +87,6 @@ export default function App() {
               <div className="min-h-screen bg-white flex items-center justify-center">
                 <RegisterPage />
               </div>
-            }
-          />
-
-          <Route
-            path="/verify-email"
-            element={
-              <VerifyEmailPage />
             }
           />
 

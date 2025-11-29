@@ -73,9 +73,8 @@ const InputField = ({ icon, name, placeholder, value, onChange, onBlur, type = '
 
 const AddListing = () => {
     const navigate = useNavigate();
-    const { currentUser, isEmailVerified } = useAuth();
+    const { currentUser } = useAuth();
 
-    const [showVerificationAlert, setShowVerificationAlert] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -113,14 +112,6 @@ const AddListing = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
-
-    useEffect(() => {
-        if (!isEmailVerified) {
-            setShowVerificationAlert(true);
-        } else {
-            setShowVerificationAlert(false);
-        }
-    }, [isEmailVerified]);
 
     const handleChange = (e) => {
         const { name, value, type } = e.target;
@@ -239,21 +230,6 @@ const AddListing = () => {
         <div className="bg-slate-50 min-h-screen">
             <div className="container mx-auto p-4 sm:p-6 lg:p-8">
                 <div className="max-w-4xl mx-auto">
-                    {showVerificationAlert && (
-                        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                            <h2 className="text-lg font-semibold text-red-800 mb-2">Email Verification Required</h2>
-                            <p className="text-red-700 mb-4">
-                                Your email is not verified yet. You must verify your email before you can create listings.
-                            </p>
-                            <button
-                                onClick={() => navigate('/verify-email')}
-                                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded"
-                            >
-                                Go to Verification
-                            </button>
-                        </div>
-                    )}
-
                     <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight mb-8">
                         Create a New Property Listing
                     </h1>
@@ -414,7 +390,7 @@ const AddListing = () => {
                             <button
                                 type="submit"
                                 className="inline-flex items-center justify-center py-3 px-8 border border-transparent shadow-md text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
-                                disabled={isLoading || showVerificationAlert}
+                                disabled={isLoading}
                             >
                                 {isLoading ? (
                                     <>

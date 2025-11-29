@@ -100,18 +100,3 @@ export const updateUserDetails = async (name, phone, photoFile = null) => {
   });
   return response.data;
 };
-
-// Send email verification
-export const sendEmailVerification = async () => {
-  const response = await api.post("/users/send-verification-email");
-  return response.data;
-};
-
-// Verify email with token
-export const verifyEmail = async (token, uid) => {
-  const response = await api.post("/users/verify-email", {
-    token,
-    uid,
-  });
-  return response.data;
-};
