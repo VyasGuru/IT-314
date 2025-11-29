@@ -225,8 +225,48 @@ const getFilteredProperties = asyncHandler(async (req, res) => {
 
         const properties = await query.exec();
 
+        // Fetch listings for the returned properties and populate lister info
+        const propertyIds = properties.map((p) => p._id);
+        const listings = await Listing.find({ propertyId: { $in: propertyIds } }).populate({
+            path: "listerFirebaseUid",
+            model: "User",
+            select: "name email photo phone role"
+        });
+
+        // Map listings by propertyId for quick lookup
+        const listingMap = {};
+        listings.forEach((l) => {
+            if (l && l.propertyId) {
+                listingMap[l.propertyId.toString()] = l;
+            }
+        });
+
+        // Attach listing and lister info to each property object returned to the client
+        const propertiesWithLister = properties.map((prop) => {
+            const listing = listingMap[prop._id.toString()] || null;
+            const lister = listing ? listing.listerFirebaseUid : null;
+            // Convert Mongoose doc to plain object to allow adding fields
+            const propObj = prop.toObject ? prop.toObject() : { ...prop };
+            propObj.listing = listing ? {
+                _id: listing._id,
+                status: listing.status,
+                rejectionReason: listing.rejectionReason,
+                createdAt: listing.createdAt,
+                updatedAt: listing.updatedAt
+            } : null;
+            propObj.lister = lister ? {
+                _id: lister._id,
+                name: lister.name,
+                email: lister.email,
+                photo: lister.photo,
+                phone: lister.phone,
+                role: lister.role
+            } : null;
+            return propObj;
+        });
+
         return res.status(200).json(
-            new ApiResponse(200, properties, "Property search successfully")
+            new ApiResponse(200, propertiesWithLister, "Property search successfully")
         );
 
     } catch (error) {
@@ -425,7 +465,7 @@ const updatePropertyStatus = asyncHandler(async (req, res) => {
 //  DELETE PROPERTY FUNCTION OF LISTER
 const deleteProperty = asyncHandler(async (req, res) => {
     const { propertyId } = req.params;
-    const { deletionReasons, deletionOtherReason } = req.body;
+    const { deletionReasons, deletionOtherReason } = req.body || {};
 
     const property = await Property.findById(propertyId);
     if (!property) throw new ApiError(404, "Property not found");
@@ -447,17 +487,47 @@ const deleteProperty = asyncHandler(async (req, res) => {
         await property.save({ validateBeforeSave: false });
     }
 
-    // Delete images from Cloudinary 
+    // Delete images from Cloudinary using allSettled so one failure doesn't reject everything
     if (property.images && property.images.length > 0) {
-        const deletePromises = property.images.map(imageUrl => deleteFromCloudinary(imageUrl));
-        await Promise.all(deletePromises); // Wait for all images to be deleted
+        try {
+            const deletePromises = property.images.map((imageUrl) => deleteFromCloudinary(imageUrl));
+            const results = await Promise.allSettled(deletePromises);
+            const failed = results.filter(r => r.status === 'rejected');
+            if (failed.length > 0) {
+                console.warn(`Some images failed to delete from Cloudinary for property ${propertyId}`, failed.map(f => f.reason?.message || f.reason));
+            }
+        } catch (err) {
+            console.warn(`Unexpected error while deleting images for property ${propertyId}:`, err.message || err);
+        }
     }
 
-    // Clean up database
-    await Review.deleteMany({ target_id: property._id.toString(), target_type: "property" });
-    await Property.findByIdAndDelete(propertyId);
-    await Listing.findByIdAndDelete(listing._id);
+    // Clean up database (attempt each operation and continue)
+    try {
+        await Review.deleteMany({ target_id: property._id.toString(), target_type: "property" });
+    } catch (err) {
+        console.warn(`Failed to delete reviews for property ${propertyId}:`, err.message || err);
+    }
 
+    try {
+        await Property.findByIdAndDelete(propertyId);
+    } catch (err) {
+        console.warn(`Failed to delete property ${propertyId}:`, err.message || err);
+    }
+
+    try {
+        await Listing.findByIdAndDelete(listing._id);
+    } catch (err) {
+        console.warn(`Failed to delete listing ${listing._id} for property ${propertyId}:`, err.message || err);
+    }
+
+    // Verify deletion succeeded (property must not exist)
+    const stillExists = await Property.findById(propertyId);
+    if (stillExists) {
+        // If property still exists, return an error so client can retry or report
+        throw new ApiError(500, "Failed to delete property. Please try again.");
+    }
+
+    console.log(`Property ${propertyId} and associated data deleted by lister ${req.user?.firebaseUid}`);
     return res.status(200).json(
         new ApiResponse(200, { deletionReasons: normalizedReasons }, "Property, listing, reviews, and images deleted")
     );
@@ -585,6 +655,49 @@ const getUserListings = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, userListings, "User listings retrieved successfully"));
 });
 
+const getPropertyById = asyncHandler(async (req, res) => {
+    const { propertyId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(propertyId)) {
+        throw new ApiError(400, "Invalid property ID");
+    }
+
+    const property = await Property.findById(propertyId);
+    if (!property) {
+        throw new ApiError(404, "Property not found");
+    }
+
+    // Fetch listing and populate lister info
+    const listing = await Listing.findOne({ propertyId: propertyId }).populate({
+        path: "listerFirebaseUid",
+        model: "User",
+        select: "name email photo phone role"
+    });
+
+    // Convert Mongoose doc to plain object to allow adding fields
+    const propObj = property.toObject ? property.toObject() : { ...property };
+    
+    // Attach listing and lister info
+    propObj.listing = listing ? {
+        _id: listing._id,
+        status: listing.status,
+        rejectionReason: listing.rejectionReason,
+        createdAt: listing.createdAt,
+        updatedAt: listing.updatedAt
+    } : null;
+    
+    propObj.lister = listing && listing.listerFirebaseUid ? {
+        _id: listing.listerFirebaseUid._id,
+        name: listing.listerFirebaseUid.name,
+        email: listing.listerFirebaseUid.email,
+        photo: listing.listerFirebaseUid.photo,
+        phone: listing.listerFirebaseUid.phone,
+        role: listing.listerFirebaseUid.role
+    } : null;
+
+    res.status(200).json(new ApiResponse(200, propObj, "Property retrieved successfully"));
+});
+
 const getListingByPropertyId = asyncHandler(async (req, res) => {
     const { propertyId } = req.params;
     const listing = await Listing.findOne({ propertyId: propertyId }).populate({
@@ -599,6 +712,7 @@ const getListingByPropertyId = asyncHandler(async (req, res) => {
 
 export {
     getFilteredProperties,
+    getPropertyById,
     createProperty,
     updatePropertyDetails,
     updatePropertyStatus,

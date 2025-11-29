@@ -28,17 +28,14 @@ const userSchema = new mongoose.Schema(
 
         role: {
             type: String,
-            enum: ['user', 'lister', 'admin'],
             required: true
         },
 
         phone: {
             type: String,
+            required: true,
             default: null,
-            required: function () {      //if user is lister then phone number is required
-                return this.role === "lister";
-            }, 
-
+            
             //validate format of phone numbers that correct or not
             validate: {
                 validator: function (num) {

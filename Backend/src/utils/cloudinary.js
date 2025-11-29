@@ -22,14 +22,29 @@ const uploadOnCloudinary = async (localFilePath) => {
     // If upload is successful, print the Cloudinary URL
     console.log("File is uploaded to Cloudinary:", response.url);
 
+    // Attempt to delete the local file to free up disk space
+    try {
+      await fs.promises.unlink(localFilePath);
+      console.log("Deleted local file after upload:", localFilePath);
+    } catch (unlinkErr) {
+      console.warn("Failed to delete local file after Cloudinary upload:", localFilePath, unlinkErr.message || unlinkErr);
+    }
+
     // Return the upload response (includes file URL and other info)
     return response;
-  } 
-  catch (error) {
-    // If upload fails, delete the temporary local file
-    fs.unlinkSync(localFilePath);
+  } catch (error) {
+    // If upload fails, try to delete the temporary local file, then rethrow
+    try {
+      if (localFilePath && fs.existsSync(localFilePath)) {
+        await fs.promises.unlink(localFilePath);
+        console.log("Deleted local file after failed upload:", localFilePath);
+      }
+    } catch (cleanupErr) {
+      console.warn("Failed to cleanup local file after failed upload:", cleanupErr.message || cleanupErr);
+    }
+    throw error;
   }
-}
+};
 
 // Function to delete a file from Cloudinary
 const deleteFromCloudinary = async (imageUrl) => {

@@ -133,10 +133,11 @@ const EditListing = () => {
                     <label htmlFor="propertyType" className="block text-sm font-medium text-gray-700">Property Type</label>
                     <select name="propertyType" id="propertyType" value={formData.propertyType || ''} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                         <option value="">Select Property Type</option>
-                        <option value="residential">Residential</option>
-                        <option value="commercial">Commercial</option>
-                        <option value="land">Land</option>
-                        <option value="rental">Rental</option>
+                        <option value="House">House</option>
+                        <option value="Apartment">Apartment</option>
+                        <option value="Villa">Villa</option>
+                        <option value="Commercial">Commercial</option>
+                        <option value="Land">Land</option>
                     </select>
                 </div>
                 <div>

@@ -60,9 +60,20 @@ const LandingPage = () => {
     fetchProperties();
   }, [filters, sortBy]);
 
-  const handleViewDetails = (propertyId) => {
-    const property = filteredProperties.find((p) => p._id === propertyId);
-    setSelectedProperty(property || null);
+  const handleViewDetails = (propertyId, propertyData) => {
+    const property =
+      propertyData ||
+      filteredProperties.find((p) => {
+        const currentId = p?._id ? String(p._id) : undefined;
+        return currentId === String(propertyId);
+      });
+
+    if (!property) {
+      console.warn("Property not found for View Details", propertyId);
+      return;
+    }
+
+    setSelectedProperty(property);
     setIsDetailsOpen(true);
   };
 

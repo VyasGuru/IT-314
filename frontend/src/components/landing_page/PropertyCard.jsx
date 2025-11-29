@@ -64,7 +64,14 @@ export function PropertyCard({
         }
       }
     };
-    fetchLister();
+    // Prefer lister provided in props (backend may include it), otherwise fetch from API
+    if (rest?.lister) {
+      setLister(rest.lister);
+    } else if (rest?.listing && rest.listing.lister) {
+      setLister(rest.listing.lister);
+    } else {
+      fetchLister();
+    }
   }, [propertyId]);
 
   const propertyPayload = {

@@ -361,28 +361,41 @@ export function PropertyDetails({ property, isOpen, onClose }) {
           )}
         </div>
 
-        {/* Agent Info */}
-        {property.agent && (
+        {/* Lister/Owner Info */}
+        {property.lister && (
           <div>
-            <h3 className="text-lg font-semibold mb-2">Contact Agent</h3>
+            <h3 className="text-lg font-semibold mb-2">Contact Property Owner</h3>
             <div className="flex items-center gap-4 border rounded-lg p-4">
               <img
-                src={property.agent?.image || "/placeholder.jpg"}
-                alt={property.agent?.name || "Agent"}
-                className="w-16 h-16 rounded-full object-cover"
-                onError={(e) => e.target.src = "/placeholder.jpg"}
+                src={property.lister?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(property.lister?.name || "Owner")}`}
+                alt={property.lister?.name || "Property Owner"}
+                className="w-16 h-16 rounded-full object-cover border border-gray-200"
+                onError={(e) => e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(property.lister?.name || "Owner")}`}
               />
               <div className="flex-1">
-                <h4 className="font-semibold">{property.agent?.name || "Agent"}</h4>
-                <p className="text-sm text-gray-500">Real Estate Agent</p>
+                <h4 className="font-semibold">{property.lister?.name || "Property Owner"}</h4>
+                <p className="text-sm text-gray-500">{property.lister?.email || ""}</p>
+                {property.lister?.phone && (
+                  <p className="text-sm text-gray-500">{property.lister.phone}</p>
+                )}
               </div>
               <div className="flex gap-2">
-                <button className="flex items-center gap-1 border border-blue-600 text-blue-600 px-3 py-1 rounded hover:bg-blue-50">
-                  <Phone className="h-4 w-4" /> Call
-                </button>
-                <button className="flex items-center gap-1 border border-blue-600 text-blue-600 px-3 py-1 rounded hover:bg-blue-50">
-                  <Mail className="h-4 w-4" /> Email
-                </button>
+                {property.lister?.phone && (
+                  <a 
+                    href={`tel:${property.lister.phone}`}
+                    className="flex items-center gap-1 border border-blue-600 text-blue-600 px-3 py-1 rounded hover:bg-blue-50 transition-colors"
+                  >
+                    <Phone className="h-4 w-4" /> Call
+                  </a>
+                )}
+                {property.lister?.email && (
+                  <a 
+                    href={`mailto:${property.lister.email}`}
+                    className="flex items-center gap-1 border border-blue-600 text-blue-600 px-3 py-1 rounded hover:bg-blue-50 transition-colors"
+                  >
+                    <Mail className="h-4 w-4" /> Email
+                  </a>
+                )}
               </div>
             </div>
           </div>

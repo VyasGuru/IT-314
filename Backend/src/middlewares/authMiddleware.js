@@ -97,42 +97,36 @@ const attachFirebaseUser = asyncHandler(async (req, _, next) => {
 });
 
 // In authMiddleware.js
+const ensureUserFromRequest = async (req) => {
+    if (req.user) {
+        return req.user;
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        throw new ApiError(401, "No token provided");
+    }
+
+    const token = authHeader.split(" ")[1];
+    const decodedToken = await admin.auth().verifyIdToken(token);
+
+    if (!decodedToken) {
+        throw new ApiError(401, "Invalid or expired token");
+    }
+
+    const user = await User.findOne({ firebaseUid: decodedToken.uid });
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    req.user = user;
+    return user;
+};
+
 const verifyLister = asyncHandler(async (req, res, next) => {
     try {
-        // Get the token from the Authorization header
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            throw new ApiError(401, "No token provided");
-        }
+        const user = await ensureUserFromRequest(req);
 
-        const token = authHeader.split(" ")[1];
-        
-        // Verify the Firebase token
-        const decodedToken = await admin.auth().verifyIdToken(token);
-        
-        if (!decodedToken) {
-            throw new ApiError(401, "Invalid or expired token");
-        }
-
-        // Find the user in the database
-        const user = await User.findOne({ firebaseUid: decodedToken.uid });
-        
-        if (!user) {
-            throw new ApiError(404, "User not found");
-        }
-
-        // Check if the user is a lister
-        if (user.role !== "lister") {
-            throw new ApiError(403, "Only listers can perform this action");
-        }
-
-        // Check if the lister is verified
-        if (user.status !== "verified") {
-            throw new ApiError(403, "Lister account not verified. Please complete verification to add listings.");
-        }
-
-        // Attach the user to the request object
-        req.user = user;
         next();
     } catch (error) {
         throw new ApiError(error.statusCode || 500, error.message || "Lister verification failed");
@@ -177,26 +171,15 @@ const checkAdmin = (req, res, next) => {
 };
 const isVerifiedLister = asyncHandler(async (req, res, next) => {
     try {
-        // Get the user from request (added by verifyFirebaseToken middleware)
-        const user = req.user;
-        
-        // Check if user exists and is a lister
-        if (!user || user.role !== 'lister') {
-            throw new ApiError(403, 'Only verified listers can create property listings');
+        const user = await ensureUserFromRequest(req);
+
+        if (!user.emailVerified) {
+            throw new ApiError(403, 'Please verify your email before creating listings.');
         }
 
-        // Check if lister is verified
-        if (user.verificationStatus !== 'verified') {
-            throw new ApiError(403, 
-                'Please complete lister verification before creating listings. ' +
-                'Submit your verification documents in your profile settings.'
-            );
-        }
 
-        // If all checks pass, proceed to the next middleware
         next();
     } catch (error) {
-        // Pass any errors to the error handler
         next(error);
     }
 });
