@@ -1177,27 +1177,7 @@ const UserDashboard = () => {
                     </form>
                   </div>
 
-                  <div className="pb-8 border-b border-gray-200">
-                    <h2 className="text-xl font-bold text-gray-800 mb-6">Preferences</h2>
-                    <div className="flex flex-col gap-4">
-                      {[
-                        { title: 'Email Notifications', desc: 'Receive email updates about your properties' },
-                        { title: 'Price Alerts', desc: 'Get notified when prices change' },
-                        { title: 'New Listings', desc: 'Receive alerts for new properties' }
-                      ].map((pref, idx) => (
-                        <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                          <div>
-                            <h3 className="font-semibold text-gray-800 mb-1">{pref.title}</h3>
-                            <p className="text-sm text-gray-600">{pref.desc}</p>
-                          </div>
-                          <label className="relative inline-block w-12 h-6 cursor-pointer">
-                            <input type="checkbox" className="opacity-0 w-0 h-0 peer" />
-                            <span className="absolute inset-0 bg-gray-300 rounded-full transition-all duration-400 peer-checked:bg-blue-600 before:absolute before:content-[''] before:h-4.5 before:w-4.5 before:left-0.75 before:bottom-0.75 before:bg-white before:rounded-full before:transition-all before:duration-400 peer-checked:before:translate-x-6"></span>
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+
 
                   <div className="bg-red-50 p-6 rounded-lg border border-red-200">
                     <h2 className="text-xl font-bold text-red-800 mb-4">Danger Zone</h2>
