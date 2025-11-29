@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 const EditListing = () => {
@@ -15,10 +15,8 @@ const EditListing = () => {
     useEffect(() => {
         const fetchProperty = async () => {
             try {
-                
-                const response = await axios.get(`/api/properties`);
-                const allProperties = response.data.data;
-                const currentProperty = allProperties.find(p => p._id === propertyId);
+                const response = await api.get(`/properties/${propertyId}`);
+                const currentProperty = response.data.data;
 
                 if (currentProperty) {
                     setProperty(currentProperty);
@@ -70,17 +68,12 @@ const EditListing = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const token = await currentUser.getIdToken();
             const dataToSend = {
                 ...formData,
                 amenities: JSON.stringify(formData.amenities),
                 location: JSON.stringify(formData.location),
             };
-            await axios.patch(`/api/properties/update-details/${propertyId}`, dataToSend, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+            await api.patch(`/properties/update-details/${propertyId}`, dataToSend);
             alert('Property updated successfully!');
             navigate('/dashboard');
         } catch (err) {
