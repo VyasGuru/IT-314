@@ -9,7 +9,7 @@ import {
 }
 from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
-import { googleLogin, loginUser, registerUser as registerUserApi, getUserProfile, logoutUser, sendEmailVerification, verifyEmail } from "../services/userApi";
+import { googleLogin, loginUser, registerUser as registerUserApi, getUserProfile, logoutUser } from "../services/userApi";
 import { clearAllComparisonStorage } from "./ComparisonContext";
 
 const AuthContext = createContext({});
@@ -19,7 +19,6 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,10 +31,8 @@ export const AuthProvider = ({ children }) => {
           const response = await loginUser(token);
           if (response && response.data && response.data.user) {
             setUserRole(response.data.user.role);
-            setIsEmailVerified(response.data.user.emailVerified || false);
           } else {
             setUserRole("visitor");
-            setIsEmailVerified(false);
           }
         } catch (error) {
           console.error("Error fetching user profile from backend:", error);
@@ -61,17 +58,13 @@ export const AuthProvider = ({ children }) => {
     const response = await googleLogin(token, role);
     if (response && response.data && response.data.user) {
       setUserRole(response.data.user.role);
-      setIsEmailVerified(response.data.user.emailVerified || false);
       return {
         user,
-        isVerified: response.data.user.emailVerified,
       };
     } else {
       setUserRole("user");
-      setIsEmailVerified(false);
       return {
         user,
-        isVerified: false,
       };
     }
   };
@@ -86,17 +79,13 @@ export const AuthProvider = ({ children }) => {
       const response = await loginUser(token, role);
       if (response && response.data && response.data.user) {
         setUserRole(response.data.user.role);
-        setIsEmailVerified(response.data.user.emailVerified || false);
         return {
           user,
-          isVerified: response.data.user.emailVerified,
         };
       } else {
         setUserRole("user");
-        setIsEmailVerified(false);
         return {
           user,
-          isVerified: false,
         };
       }
     } catch (error) {
@@ -220,7 +209,6 @@ export const AuthProvider = ({ children }) => {
       // Sign out from Firebase
       await firebaseSignOut(auth);
       setUserRole(null);
-      setIsEmailVerified(false);
 
     } 
     
@@ -230,7 +218,6 @@ export const AuthProvider = ({ children }) => {
       clearAllComparisonStorage();
       await firebaseSignOut(auth);
       setUserRole(null);
-      setIsEmailVerified(false);
       throw error;
     }
   };
@@ -243,7 +230,6 @@ export const AuthProvider = ({ children }) => {
       const response = await loginUser(token);
       if (response && response.data && response.data.user) {
         setUserRole(response.data.user.role);
-        setIsEmailVerified(response.data.user.emailVerified || false);
       }
     } catch (error) {
       console.error("Error refreshing user profile:", error);
@@ -253,13 +239,10 @@ export const AuthProvider = ({ children }) => {
   const value = {
     currentUser,
     userRole,
-    isEmailVerified,
     signInWithGoogle,
     signInWithEmailPassword,
     registerWithEmailPassword,
     signOut,
-    sendEmailVerification,
-    verifyEmail,
     refreshUserProfile,
   };
 

@@ -32,17 +32,11 @@ export default function LoginPage() {
         }
         
         await registerWithEmailPassword(formData.email, formData.password, formData.name, selectedRole);
-        // After registration, redirect to verify email
-        navigate("/verify-email");
+        navigate("/");
       } else {
         // Login flow
-        const result = await signInWithEmailPassword(formData.email, formData.password, selectedRole);
-        // Check if user is verified, if not redirect to verification page
-        if (result.isVerified === false) {
-          navigate("/verify-email");
-        } else {
-          navigate("/");
-        }
+        await signInWithEmailPassword(formData.email, formData.password, selectedRole);
+        navigate("/");
       }
     } catch (error) {
       // Handle different Firebase auth errors
@@ -87,13 +81,8 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
     try {
-      const result = await signInWithGoogle(selectedRole);
-      // Check if user is verified, if not redirect to verification page
-      if (result.isVerified === false) {
-        navigate("/verify-email");
-      } else {
-        navigate("/");
-      }
+      await signInWithGoogle(selectedRole);
+      navigate("/");
     } catch (error) {
       console.error("Google sign-in error:", error);
       if (error.message && error.message.includes("registered as")) {

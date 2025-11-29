@@ -64,6 +64,7 @@ const verifyFirebaseToken = asyncHandler(async (req, _, next) => {
         email,
         name: name || "Unnamed User",
         role: email === ADMIN_EMAIL ? "admin" : "user",
+        emailVerified: true,
       });
     }
 
@@ -171,13 +172,7 @@ const checkAdmin = (req, res, next) => {
 };
 const isVerifiedLister = asyncHandler(async (req, res, next) => {
     try {
-        const user = await ensureUserFromRequest(req);
-
-        if (!user.emailVerified) {
-            throw new ApiError(403, 'Please verify your email before creating listings.');
-        }
-
-
+        await ensureUserFromRequest(req);
         next();
     } catch (error) {
         next(error);

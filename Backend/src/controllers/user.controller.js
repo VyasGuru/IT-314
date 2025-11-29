@@ -12,53 +12,6 @@ import crypto from "crypto";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
-// Helper to send verification email
-const sendVerificationEmailInternal = async (user) => {
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
-
-    // Set token and expiration (24 hours)
-    user.emailVerificationToken = hashedToken;
-    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-    await user.save({ validateBeforeSave: false });
-
-    // Create verification link
-    // Use FRONTEND_URL if available, otherwise fallback to the provided Vercel URL
-    const frontendUrl = 'https://it-314.vercel.app';
-    const verificationLink = `${frontendUrl}/verify-email?token=${verificationToken}&uid=${user.firebaseUid}`;
-    console.log("Verification link created:", verificationLink);
-
-    // Send verification email
-    try {
-        console.log("Attempting to send email to:", user.email);
-        await sendEmail(
-            user.email,
-            "Verify Your Email - FindMySquare",
-            `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2>Welcome to FindMySquare!</h2>
-                    <p>Hello ${user.name},</p>
-                    <p>Thank you for registering. Please verify your email address by clicking the button below:</p>
-                    <div style="margin: 30px 0;">
-                        <a href="${verificationLink}" style="background-color: #0066FF; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Verify Email</a>
-                    </div>
-                    <p>Or copy this link: <a href="${verificationLink}">${verificationLink}</a></p>
-                    <p>This link will expire in 24 hours.</p>
-                    <p>If you didn't create this account, please ignore this email.</p>
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">FindMySquare Team</p>
-                </div>
-            `
-        );
-        console.log("Email sent successfully to:", user.email);
-        return verificationLink;
-    } catch (emailError) {
-        console.error("Failed to send verification email:", emailError);
-        return null;
-    }
-};
 
 //register
 const registerUser = asyncHandler(async (req, res) => {
@@ -112,6 +65,7 @@ const registerUser = asyncHandler(async (req, res) => {
             email,
             name,
             role,
+            emailVerified: true,
         };
 
         // Only include phone if it was provided
@@ -123,16 +77,10 @@ const registerUser = asyncHandler(async (req, res) => {
         user = await User.create(userData);
         console.log("✓ User created:", user._id);
 
-        // Send verification email automatically
-        const verificationLink = await sendVerificationEmailInternal(user);
-        const emailMessage = verificationLink
-            ? "User registered and verification email sent."
-            : "User registered but failed to send verification email. Please request a new one.";
-
         console.log("=============================");
 
         res.status(201).json(
-            new ApiResponse(201, user, emailMessage)
+            new ApiResponse(201, user, "User registered successfully.")
         );
     }
 
@@ -175,16 +123,25 @@ const loginUser = asyncHandler(async (req, res) => {
         //if user is present in firebase but not in mongodb then add it
         //firebase store - uid, name, email, password
         if (!user) {
-            user = await User.create(
-                {
-                    firebaseUid: uid,
-                    email,
-                    name: decoded.name || "Unnamed User",
-                    role: isAdmin ? "admin" : "user",
-                }
-            );
-        } else if (isAdmin && user.role !== "admin") {
-            user.role = "admin";
+            const userData = {
+                firebaseUid: uid,
+                email,
+                name: decoded.name || "Unnamed User",
+                role: isAdmin ? "admin" : "user",
+                emailVerified: true,
+            };
+            if (userData.role === 'lister' && (!req.body.phone || req.body.phone.trim().length === 0)) {
+                throw new ApiError(400, "Phone number is required for lister account");
+            }
+            if (req.body.phone) {
+                userData.phone = req.body.phone;
+            }
+            user = await User.create(userData);
+        } else {
+            if (isAdmin && user.role !== "admin") {
+                user.role = "admin";
+            }
+            user.emailVerified = true;
             await user.save();
         }
 
@@ -232,17 +189,25 @@ const googleLogin = asyncHandler(async (req, res) => {
         const isAdmin = email === ADMIN_EMAIL;
 
         if (!user) {
-
-            user = await User.create(
-                {
-                    firebaseUid: uid,
-                    email,
-                    name,
-                    role: isAdmin ? "admin" : "user",
-                }
-            );
-        } else if (isAdmin && user.role !== "admin") {
-            user.role = "admin";
+            const userData = {
+                firebaseUid: uid,
+                email,
+                name,
+                role: isAdmin ? "admin" : "user",
+                emailVerified: true,
+            };
+            if (userData.role === 'lister' && (!req.body.phone || req.body.phone.trim().length === 0)) {
+                throw new ApiError(400, "Phone number is required for lister account");
+            }
+            if (req.body.phone) {
+                userData.phone = req.body.phone;
+            }
+            user = await User.create(userData);
+        } else {
+            if (isAdmin && user.role !== "admin") {
+                user.role = "admin";
+            }
+            user.emailVerified = true;
             await user.save();
         }
 
@@ -506,88 +471,6 @@ const updateUserDetails = asyncHandler(async (req, res) => {
     }
 });
 
-
-// Reset email verification (for testing/debugging)
-const resetEmailVerification = asyncHandler(async (req, res) => {
-    const { uid } = req.body;
-
-    if (!uid) {
-        throw new ApiError(400, "UID is required");
-    }
-
-    const user = await User.findOne({ firebaseUid: uid });
-
-    if (!user) {
-        throw new ApiError(404, "User not found");
-    }
-
-    user.emailVerified = false;
-    user.emailVerificationToken = null;
-    user.emailVerificationExpires = null;
-
-    await user.save();
-
-    res.status(200).json(
-        new ApiResponse(200, { user }, "Email verification reset successfully")
-    );
-});
-
-const sendEmailVerification = asyncHandler(async (req, res) => {
-    const uid = req.user.firebaseUid;
-    console.log("sendEmailVerification: Starting for uid:", uid);
-
-    const user = await User.findOne({ firebaseUid: uid });
-
-    if (!user) {
-        throw new ApiError(404, "User not found");
-    }
-
-    // Allow resending even if already verified (for cases where user wants to re-verify)
-    // Only show a warning if already verified
-    const isAlreadyVerified = user.emailVerified;
-
-    const verificationLink = await sendVerificationEmailInternal(user);
-
-    res.status(200).json(
-        new ApiResponse(200, { verificationLink }, isAlreadyVerified ? "Verification email sent again. You are already verified but can re-verify if needed." : "Verification email sent successfully. Check your inbox or use the link above.")
-    );
-});
-
-// Verify email with token
-const verifyEmail = asyncHandler(async (req, res) => {
-    const { token, uid } = req.body;
-
-    if (!token || !uid) {
-        throw new ApiError(400, "Token and UID are required");
-    }
-
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
-    const user = await User.findOne({
-        firebaseUid: uid,
-        emailVerificationToken: hashedToken,
-        emailVerificationExpires: { $gt: Date.now() },
-    });
-
-    if (!user) {
-        // Check if the user exists but the token is wrong/expired
-        const existingUser = await User.findOne({ firebaseUid: uid });
-        if (existingUser && existingUser.emailVerified) {
-            return res
-                .status(200)
-                .json(new ApiResponse(200, { user: existingUser }, "Email already verified."));
-        }
-        throw new ApiError(400, "Invalid or expired verification token");
-    }
-
-    user.emailVerified = true;
-    user.emailVerificationToken = undefined;
-    user.emailVerificationExpires = undefined;
-    await user.save({ validateBeforeSave: false });
-
-    res.status(200).json(new ApiResponse(200, { user }, "Email verified successfully"));
-});
-
 //get all users
 const getAllUsers = asyncHandler(async (req, res) => {
     try {
@@ -686,11 +569,8 @@ export {
     resetPassword,
     forgetPassword,
     updateUserDetails,
-    sendEmailVerification,
-    verifyEmail,
     getAllUsers,
     getUserByUid,
     updateUserByUid,
     deleteUserByUid,
-    resetEmailVerification,
 };
